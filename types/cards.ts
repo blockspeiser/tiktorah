@@ -1,0 +1,54 @@
+import { SefariaCategory, SefariaTopic } from '@/services/sefariaData';
+
+export type CardType = 'genre' | 'text' | 'author' | 'topic';
+
+export interface BaseCard {
+  id: string;
+  type: CardType;
+  title: string;
+  description: string;
+}
+
+export interface GenreCard extends BaseCard {
+  type: 'genre';
+  category: string;
+  parentCategories: string[];
+}
+
+export interface TextCard extends BaseCard {
+  type: 'text';
+  categories: string[];
+  heTitle: string;
+}
+
+export interface AuthorCard extends BaseCard {
+  type: 'author';
+  heTitle: string;
+  generation?: string;
+  numSources?: number;
+  wikiLink?: string;
+}
+
+export interface TopicCard extends BaseCard {
+  type: 'topic';
+  heTitle: string;
+  numSources?: number;
+}
+
+export type FeedCard = GenreCard | TextCard | AuthorCard | TopicCard;
+
+// Helper to get primary English title from topic titles array
+export function getPrimaryEnglishTitle(titles: SefariaTopic['titles']): string {
+  const primary = titles.find(t => t.lang === 'en' && t.primary);
+  if (primary) return primary.text;
+  const anyEnglish = titles.find(t => t.lang === 'en');
+  return anyEnglish?.text ?? 'Unknown';
+}
+
+// Helper to get primary Hebrew title from topic titles array
+export function getPrimaryHebrewTitle(titles: SefariaTopic['titles']): string {
+  const primary = titles.find(t => t.lang === 'he' && t.primary);
+  if (primary) return primary.text;
+  const anyHebrew = titles.find(t => t.lang === 'he');
+  return anyHebrew?.text ?? '';
+}

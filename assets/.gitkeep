@@ -1,0 +1,11 @@
+# Placeholder for assets directory
+
+Required assets (add your own images):
+- icon.png (1024x1024) - App icon
+- splash-icon.png (200x200) - Splash screen icon
+- adaptive-icon.png (1024x1024) - Android adaptive icon
+- favicon.png (48x48) - Web favicon
+
+You can generate these using:
+- https://icon.kitchen/ for app icons
+- https://appicon.co/ for multiple sizes
