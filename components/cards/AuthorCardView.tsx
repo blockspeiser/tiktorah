@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { AuthorCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
+import { CardLinks } from './CardLinks';
+import { MarkdownText } from '@/components/MarkdownText';
+import { SmartImage } from '@/components/SmartImage';
 import { colors } from '@/constants/colors';
+import palette from '@/constants/palette';
+import { buildSefariaTopicUrl } from '@/utils/links';
 
 interface AuthorCardViewProps {
   card: AuthorCard;
@@ -45,17 +50,46 @@ function formatGeneration(gen: string | undefined): string | null {
 
 export function AuthorCardView({ card, onNextCard }: AuthorCardViewProps) {
   const generation = formatGeneration(card.generation);
+  const accentColor = useMemo(() => palette.randomColor(), [card.id]);
+  const typeLabel = card.displayType ?? 'Author';
 
   // Build metadata line
   const metaParts: string[] = [];
   if (generation) metaParts.push(generation);
   if (card.numSources && card.numSources > 0) {
-    metaParts.push(`${card.numSources.toLocaleString()} sources`);
+    metaParts.push(`${card.numSources.toLocaleString()} sources on Sefaria`);
   }
   const metaLine = metaParts.join(' · ');
+  const sefariaUrl = buildSefariaTopicUrl(card.slug);
+  const links = [
+    { label: 'Sefaria', url: sefariaUrl },
+    ...(card.wikiLink ? [{ label: 'Wikipedia', url: card.wikiLink }] : []),
+  ];
 
   return (
-    <CardWrapper type="Author" icon="account" onNextCard={onNextCard}>
+    <CardWrapper
+      type={typeLabel}
+      icon="account"
+      accentColor={accentColor}
+      onNextCard={onNextCard}
+    >
+      {/* Image with smart cropping */}
+      {card.image && (
+        <View style={styles.imageContainer}>
+          <SmartImage
+            uri={card.image.uri}
+            width="100%"
+            height={160}
+            style={styles.image}
+          />
+          {card.image.caption && (
+            <Text style={styles.imageCaption} numberOfLines={2}>
+              {card.image.caption}
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Title */}
       <Text style={styles.title}>
         {card.title}
@@ -68,41 +102,37 @@ export function AuthorCardView({ card, onNextCard }: AuthorCardViewProps) {
         </Text>
       )}
 
-      {/* Description */}
-      {card.description ? (
-        <Text style={styles.description}>
-          {card.description}
-        </Text>
-      ) : (
-        <Text style={styles.descriptionEmpty}>
-          A scholar in the Jewish tradition.
-        </Text>
-      )}
+      {/* Description with truncation */}
+      <MarkdownText maxHeight={card.image ? 200 : 350}>{card.description}</MarkdownText>
+
+      <CardLinks links={links} />
     </CardWrapper>
   );
 }
 
 const styles = StyleSheet.create({
+  imageContainer: {
+    marginBottom: 8,
+  },
+  image: {
+    borderRadius: 4,
+  },
+  imageCaption: {
+    fontSize: 11,
+    color: colors.gray[500],
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginBottom: 12,
+    marginTop: 28,
+    marginBottom: 6,
   },
   meta: {
     fontSize: 14,
     color: colors.gray[500],
-    marginBottom: 24,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.gray[700],
-  },
-  descriptionEmpty: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.gray[500],
-    fontStyle: 'italic',
+    marginBottom: 12,
   },
 });

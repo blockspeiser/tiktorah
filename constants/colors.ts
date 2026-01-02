@@ -2,6 +2,7 @@
 export const colors = {
   hotPink: '#ff2d8f',
   hotPinkLight: '#ffe3f0',
+  'sefaria-blue': 'rgb(24, 52, 93)',
 
   // Semantic colors
   primary: '#ff2d8f',

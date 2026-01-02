@@ -1,9 +1,13 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { GenreCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
+import { CardLinks } from './CardLinks';
+import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
+import palette from '@/constants/palette';
+import { buildSefariaCategoryUrl } from '@/utils/links';
 
 interface GenreCardViewProps {
   card: GenreCard;
@@ -14,9 +18,18 @@ export function GenreCardView({ card, onNextCard }: GenreCardViewProps) {
   const breadcrumb = card.parentCategories.length > 0
     ? card.parentCategories.join(' › ')
     : null;
+  const accentColor = palette.categoryColor(card.category);
+  const categoryPath = [...card.parentCategories, card.category].filter(Boolean);
+  const sefariaUrl = buildSefariaCategoryUrl(categoryPath);
 
   return (
-    <CardWrapper type="Genre" icon="bookshelf" onNextCard={onNextCard}>
+    <CardWrapper
+      type="Text Category"
+      icon="bookshelf"
+      accentColor={accentColor}
+      iconColor={accentColor}
+      onNextCard={onNextCard}
+    >
       {/* Breadcrumb path */}
       {breadcrumb && (
         <Text style={styles.breadcrumb}>
@@ -29,41 +42,25 @@ export function GenreCardView({ card, onNextCard }: GenreCardViewProps) {
         {card.title}
       </Text>
 
-      {/* Description */}
-      {card.description ? (
-        <Text style={styles.description}>
-          {card.description}
-        </Text>
-      ) : (
-        <Text style={styles.descriptionEmpty}>
-          A collection of texts in the {card.title} category.
-        </Text>
-      )}
+      {/* Description with truncation */}
+      <MarkdownText maxHeight={400}>{card.description}</MarkdownText>
+
+      <CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />
     </CardWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   breadcrumb: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.gray[500],
-    marginBottom: 16,
+    marginBottom: 4,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginBottom: 24,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.gray[700],
-  },
-  descriptionEmpty: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.gray[500],
-    fontStyle: 'italic',
+    marginTop: 28,
+    marginBottom: 6,
   },
 });

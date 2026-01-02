@@ -48,6 +48,20 @@ export type SefariaTopicTitle = {
   transliteration?: boolean;
 };
 
+export type SefariaTopicProperty = {
+  value: string;
+  dataSource?: string;
+  data_source?: string;
+};
+
+export type SefariaTopicImage = {
+  image_uri?: string;
+  image_caption?: {
+    en?: string;
+    he?: string;
+  };
+};
+
 export type SefariaTopic = {
   slug: string;
   titles: SefariaTopicTitle[];
@@ -64,6 +78,24 @@ export type SefariaTopic = {
   numSources?: number;
   subTopics?: SefariaTopic[];
   refs?: string[];
+  subclass?: string;
+  alt_ids?: {
+    wikidata?: string;
+    _temp_id?: string;
+    _old_slug?: string;
+    'old-person-key'?: string;
+  };
+  properties?: {
+    generation?: SefariaTopicProperty;
+    sex?: SefariaTopicProperty;
+    enWikiLink?: SefariaTopicProperty;
+    heWikiLink?: SefariaTopicProperty;
+    jeLink?: SefariaTopicProperty;
+    era?: SefariaTopicProperty;
+  };
+  parasha?: string;
+  ref?: string;
+  image?: SefariaTopicImage;
 };
 
 export type SefariaTopics = SefariaTopic[];

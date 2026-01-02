@@ -19,20 +19,40 @@ export interface TextCard extends BaseCard {
   type: 'text';
   categories: string[];
   heTitle: string;
+  excerpt?: {
+    ref: string;
+    text: string;
+  };
+}
+
+export interface AuthorImage {
+  uri: string;
+  caption?: string;
 }
 
 export interface AuthorCard extends BaseCard {
   type: 'author';
+  slug: string;
   heTitle: string;
+  displayType?: string;
   generation?: string;
   numSources?: number;
+  image?: AuthorImage;
   wikiLink?: string;
+  jewishEncyclopediaLink?: string;
 }
 
 export interface TopicCard extends BaseCard {
   type: 'topic';
+  slug: string;
   heTitle: string;
+  displayType?: string;
   numSources?: number;
+  wikiLink?: string;
+  excerpt?: {
+    ref: string;
+    text: string;
+  };
 }
 
 export type FeedCard = GenreCard | TextCard | AuthorCard | TopicCard;

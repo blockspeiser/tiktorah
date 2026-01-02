@@ -8,65 +8,83 @@ interface CardWrapperProps {
   children: ReactNode;
   type: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  accentColor: string;
+  iconColor?: string;
   onNextCard?: () => void;
 }
 
-export function CardWrapper({ children, type, icon, onNextCard }: CardWrapperProps) {
+export function CardWrapper({ children, type, icon, accentColor, iconColor, onNextCard }: CardWrapperProps) {
   const theme = useTheme();
 
   return (
-    <View style={styles.cardContent}>
-      {/* Type label with icon */}
-      <View style={styles.typeRow}>
-        <MaterialCommunityIcons
-          name={icon}
-          size={14}
-          color={colors.gray[500]}
-        />
-        <Text style={styles.typeLabel}>
-          {type.toUpperCase()}
-        </Text>
-      </View>
+    <View style={styles.container}>
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+      <View style={styles.cardContent}>
+        <View style={styles.contentWrapper}>
+          {/* Type label with icon */}
+          <View style={styles.typeRow}>
+            <MaterialCommunityIcons
+              name={icon}
+              size={32}
+              color={iconColor ?? accentColor}
+            />
+            <Text style={[styles.typeLabel, { color: accentColor }]}>
+              {type.toUpperCase()}
+            </Text>
+          </View>
 
-      {/* Card content */}
-      <View style={styles.content}>
-        {children}
-      </View>
+          {/* Card content */}
+          <View style={styles.content}>
+            {children}
+          </View>
+        </View>
 
-      {/* Web-only next button */}
-      {Platform.OS === 'web' && onNextCard && (
-        <Pressable style={styles.nextButton} onPress={onNextCard}>
-          <MaterialCommunityIcons
-            name="chevron-down"
-            size={32}
-            color={colors.gray[400]}
-          />
-        </Pressable>
-      )}
+        {/* Web-only next button */}
+        {Platform.OS === 'web' && onNextCard && (
+          <Pressable style={styles.nextButton} onPress={onNextCard}>
+            <MaterialCommunityIcons
+              name="chevron-down"
+              size={32}
+              color={colors.gray[400]}
+            />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  accentBar: {
+    height: 24,
+    width: '100%',
+  },
   cardContent: {
     flex: 1,
     padding: 28,
-    paddingTop: 24,
+    paddingTop: 28,
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    flex: 1,
+    justifyContent: 'flex-start',
   },
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 6,
   },
   typeLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1,
-    color: colors.gray[500],
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
   content: {
-    flex: 1,
+    overflow: 'hidden',
   },
   nextButton: {
     position: 'absolute',
