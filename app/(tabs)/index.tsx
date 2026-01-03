@@ -43,6 +43,7 @@ export default function FeedScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showDataModal, setShowDataModal] = useState(false);
   const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const preloadedRef = useRef<FeedCard[]>([]);
   const cardPoolRef = useRef<CardPool | null>(null);
@@ -93,65 +94,71 @@ export default function FeedScreen() {
   }, [countWords, isCardTypeEnabled]);
 
   const hydrateCard = useCallback(async (card: FeedCard): Promise<FeedCard | null> => {
-    // Handle text cards - fetch text excerpt
-    if (card.type === 'text') {
-      const cached = textExcerptCacheRef.current.get(card.title);
-      if (cached) {
-        const hydrated = { ...card, excerpt: cached } as TextCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
+    try {
+      // Handle text cards - fetch text excerpt
+      if (card.type === 'text') {
+        const cached = textExcerptCacheRef.current.get(card.title);
+        if (cached) {
+          const hydrated = { ...card, excerpt: cached } as TextCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        const excerpt = await fetchTextExcerpt(card.title);
+        if (excerpt) {
+          textExcerptCacheRef.current.set(card.title, excerpt);
+          const hydrated = { ...card, excerpt } as TextCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        return null;
       }
 
-      const excerpt = await fetchTextExcerpt(card.title);
-      if (excerpt) {
-        textExcerptCacheRef.current.set(card.title, excerpt);
-        const hydrated = { ...card, excerpt } as TextCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
+      // Handle topic cards - fetch topic excerpt
+      if (card.type === 'topic') {
+        const cached = topicExcerptCacheRef.current.get(card.slug);
+        if (cached) {
+          const hydrated = { ...card, excerpt: cached } as TopicCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        const excerpt = await fetchTopicExcerpt(card.slug);
+        if (excerpt) {
+          topicExcerptCacheRef.current.set(card.slug, excerpt);
+          const hydrated = { ...card, excerpt } as TopicCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        // Topics without excerpts are still valid if they pass other checks
+        return shouldSkipCard(card) ? null : card;
       }
 
+      // Handle genre cards - fetch excerpt from first book in category
+      if (card.type === 'genre' && card.firstBookTitle) {
+        const cacheKey = card.firstBookTitle;
+        const cached = genreExcerptCacheRef.current.get(cacheKey);
+        if (cached) {
+          const hydrated = { ...card, excerpt: cached } as GenreCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        const excerpt = await fetchTextExcerpt(card.firstBookTitle);
+        if (excerpt) {
+          genreExcerptCacheRef.current.set(cacheKey, excerpt);
+          const hydrated = { ...card, excerpt } as GenreCard;
+          return shouldSkipCard(hydrated) ? null : hydrated;
+        }
+
+        // Genres without excerpts are still valid if they pass other checks
+        return shouldSkipCard(card) ? null : card;
+      }
+
+      // Other card types (author, genre without firstBookTitle)
+      return shouldSkipCard(card) ? null : card;
+    } catch (error) {
+      console.warn(`[Feed] Error hydrating ${card.type} card:`, error);
+      // On error, skip this card but don't crash the feed
       return null;
     }
-
-    // Handle topic cards - fetch topic excerpt
-    if (card.type === 'topic') {
-      const cached = topicExcerptCacheRef.current.get(card.slug);
-      if (cached) {
-        const hydrated = { ...card, excerpt: cached } as TopicCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
-      }
-
-      const excerpt = await fetchTopicExcerpt(card.slug);
-      if (excerpt) {
-        topicExcerptCacheRef.current.set(card.slug, excerpt);
-        const hydrated = { ...card, excerpt } as TopicCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
-      }
-
-      // Topics without excerpts are still valid if they pass other checks
-      return shouldSkipCard(card) ? null : card;
-    }
-
-    // Handle genre cards - fetch excerpt from first book in category
-    if (card.type === 'genre' && card.firstBookTitle) {
-      const cacheKey = card.firstBookTitle;
-      const cached = genreExcerptCacheRef.current.get(cacheKey);
-      if (cached) {
-        const hydrated = { ...card, excerpt: cached } as GenreCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
-      }
-
-      const excerpt = await fetchTextExcerpt(card.firstBookTitle);
-      if (excerpt) {
-        genreExcerptCacheRef.current.set(cacheKey, excerpt);
-        const hydrated = { ...card, excerpt } as GenreCard;
-        return shouldSkipCard(hydrated) ? null : hydrated;
-      }
-
-      // Genres without excerpts are still valid if they pass other checks
-      return shouldSkipCard(card) ? null : card;
-    }
-
-    // Other card types (author, genre without firstBookTitle)
-    return shouldSkipCard(card) ? null : card;
   }, [shouldSkipCard]);
 
   const buildCardBatch = useCallback(async (count: number): Promise<FeedCard[]> => {
@@ -194,13 +201,41 @@ export default function FeedScreen() {
       setCardPool(pool);
 
       (async () => {
-        const initialCards = await buildCardBatch(INITIAL_CARD_COUNT);
-        const preloadQueue = await buildCardBatch(PRELOAD_QUEUE_COUNT);
+        try {
+          console.log('[Feed] Building initial cards...');
+          setLoadError(null);
+          const initialCards = await buildCardBatch(INITIAL_CARD_COUNT);
+          console.log(`[Feed] Built ${initialCards.length} initial cards`);
 
-        if (isCancelled) return;
+          if (isCancelled) return;
 
-        setCards(initialCards);
-        preloadedRef.current = preloadQueue;
+          // Set cards even if we got fewer than requested
+          if (initialCards.length > 0) {
+            setCards(initialCards);
+          } else {
+            console.warn('[Feed] No initial cards built, retrying with more attempts...');
+            // Retry with more attempts
+            const fallbackCards = await buildCardBatch(INITIAL_CARD_COUNT);
+            if (!isCancelled) {
+              if (fallbackCards.length > 0) {
+                setCards(fallbackCards);
+              } else {
+                console.error('[Feed] All card building attempts failed');
+                setLoadError('Unable to load content. Please refresh the page.');
+              }
+            }
+          }
+
+          const preloadQueue = await buildCardBatch(PRELOAD_QUEUE_COUNT);
+          if (!isCancelled) {
+            preloadedRef.current = preloadQueue;
+          }
+        } catch (error) {
+          console.error('[Feed] Error building cards:', error);
+          if (!isCancelled) {
+            setLoadError('Something went wrong. Please refresh the page.');
+          }
+        }
       })();
     }
 
@@ -276,6 +311,7 @@ export default function FeedScreen() {
 
   // Show splash screen until both: data is loaded AND minimum time has elapsed
   const isReady = !isLoading && cardPool && cards.length > 0 && splashMinTimeElapsed;
+  const showError = loadError && splashMinTimeElapsed;
 
   useEffect(() => {
     if (!cardPool) return;
@@ -286,6 +322,30 @@ export default function FeedScreen() {
       flatListRef.current?.scrollToIndex({ index: 0, animated: false });
     }
   }, [preferences, isCardTypeEnabled, cardPool, currentIndex, cards.length]);
+
+  // Show error state if loading failed
+  if (showError) {
+    const errorContent = (
+      <View style={styles.errorContainer}>
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.gray[400]} />
+        <Text style={styles.errorText}>{loadError}</Text>
+      </View>
+    );
+
+    if (showHeader) {
+      return (
+        <View style={styles.webWrapper}>
+          <DesktopHeader />
+          <View style={styles.webContent}>
+            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
+              {errorContent}
+            </View>
+          </View>
+        </View>
+      );
+    }
+    return errorContent;
+  }
 
   if (!isReady) {
     // On desktop, show splash within the mock phone container with header
@@ -412,5 +472,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.gray[600],
+    textAlign: 'center',
   },
 });

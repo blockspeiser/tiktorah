@@ -34,24 +34,24 @@ export function useGoogleAuthRequest() {
 }
 
 export async function signInWithGoogleRedirect() {
-  return signInWithRedirect(auth.current, googleProvider);
+  return signInWithRedirect(auth, googleProvider);
 }
 
 export async function handleRedirectResult() {
-  return getRedirectResult(auth.current);
+  return getRedirectResult(auth);
 }
 
 export async function signInWithGoogleCredential(idToken: string) {
   const credential = GoogleAuthProvider.credential(idToken);
-  return signInWithCredential(auth.current, credential);
+  return signInWithCredential(auth, credential);
 }
 
 export function subscribeToAuth(callback: (user: User | null) => void) {
-  return onAuthStateChanged(auth.current, callback);
+  return onAuthStateChanged(auth, callback);
 }
 
 export async function signOut() {
-  return firebaseSignOut(auth.current);
+  return firebaseSignOut(auth);
 }
 
 export const isWeb = Platform.OS === 'web';
