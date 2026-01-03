@@ -140,12 +140,19 @@ function getLocalFilePath(fileName: string): string {
  * Generate a SHA256 hash of the data for comparison
  */
 async function generateHash<T>(data: T): Promise<string> {
-  const jsonString = JSON.stringify(data);
-  const hash = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    jsonString
-  );
-  return hash;
+  try {
+    const jsonString = JSON.stringify(data);
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      jsonString
+    );
+    return hash;
+  } catch (error) {
+    // Fallback for browsers where crypto fails (e.g., some Safari versions)
+    console.warn('Crypto hash failed, using length-based fallback:', error);
+    const jsonString = JSON.stringify(data);
+    return `fallback-${jsonString.length}-${Date.now()}`;
+  }
 }
 
 /**
@@ -176,6 +183,16 @@ async function storeHash(hashKey: string, hash: string): Promise<void> {
 async function loadFromLocalStorage<T>(config: DataConfig<T>): Promise<T | null> {
   try {
     if (Platform.OS === 'web') {
+      // Check if localStorage is available (Safari private mode blocks it)
+      try {
+        const testKey = '__storage_test__';
+        localStorage.setItem(testKey, testKey);
+        localStorage.removeItem(testKey);
+      } catch {
+        console.warn('localStorage not available (possibly private browsing mode)');
+        return null;
+      }
+
       const data = await AsyncStorage.getItem(config.dataKey);
       if (data) {
         return JSON.parse(data);
@@ -205,6 +222,15 @@ async function saveToLocalStorage<T>(config: DataConfig<T>, data: T): Promise<vo
     const jsonString = JSON.stringify(data);
 
     if (Platform.OS === 'web') {
+      // Check if localStorage is available before trying to save
+      try {
+        const testKey = '__storage_test__';
+        localStorage.setItem(testKey, testKey);
+        localStorage.removeItem(testKey);
+      } catch {
+        console.warn('localStorage not available, skipping save');
+        return;
+      }
       await AsyncStorage.setItem(config.dataKey, jsonString);
     } else {
       const filePath = getLocalFilePath(config.fileName);
