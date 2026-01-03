@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, Platform, useWindowDimensions } from 'react-native';
 import {
   Text,
   Button,
@@ -16,9 +16,18 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '@/constants/colors';
+import { DesktopHeader } from '@/components/DesktopHeader';
 
 export default function ComponentsScreen() {
   const theme = useTheme();
+  const mobileNavHeight = useMobileNavHeight();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isCompactWeb = isWeb && screenWidth < 720;
+  const isMobileView = !isWeb || isCompactWeb;
   const [text, setText] = useState('');
   const [password, setPassword] = useState('');
   const [checked, setChecked] = useState(false);
@@ -28,8 +37,10 @@ export default function ComponentsScreen() {
   const [segmentValue, setSegmentValue] = useState('day');
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+    <View style={[styles.screen, isMobileView && styles.screenMobile]}>
+      <DesktopHeader />
+      <SafeAreaView style={[styles.container, isMobileView ? styles.containerMobile : styles.containerDesktop]} edges={['bottom']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: mobileNavHeight }]}>
         {/* Buttons Section */}
         <Section title="Buttons">
           <View style={styles.row}>
@@ -209,8 +220,10 @@ export default function ComponentsScreen() {
             onPress={() => {}}
           />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+      <MobileNav />
+    </View>
   );
 }
 
@@ -226,8 +239,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  screenMobile: {
+    backgroundColor: colors.white,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    backgroundColor: colors.hotPinkLight,
+  },
+  containerMobile: {
+    backgroundColor: colors.white,
   },
   scrollView: {
     flex: 1,

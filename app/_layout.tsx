@@ -9,6 +9,7 @@ import { useFonts } from 'expo-font';
 import { theme } from '@/constants/theme';
 import { colors } from '@/constants/colors';
 import { SefariaProvider } from '@/contexts/SefariaContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -38,12 +39,14 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <SefariaProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          />
-          <StatusBar style="auto" />
+          <AuthProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            />
+            <StatusBar style="auto" />
+          </AuthProvider>
         </SefariaProvider>
       </PaperProvider>
     </SafeAreaProvider>

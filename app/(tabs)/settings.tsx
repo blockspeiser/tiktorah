@@ -1,266 +1,193 @@
-import { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, Platform, useWindowDimensions, Image } from 'react-native';
 import {
   Text,
   List,
-  Switch,
+  Checkbox,
   Divider,
-  useTheme,
-  Button,
   ActivityIndicator,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSefaria } from '@/contexts/SefariaContext';
+import { useFeedPreferences } from '@/hooks/useFeedPreferences';
+import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
+import { DesktopHeader } from '@/components/DesktopHeader';
+import { colors } from '@/constants/colors';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-  const theme = useTheme();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [analytics, setAnalytics] = useState(true);
-
-  const {
-    index,
-    topics,
-    isCheckingForUpdates,
-    dataSources,
-    refreshData,
-    resetToBundle,
-  } = useSefaria();
-
-  const handleRefreshData = async () => {
-    await refreshData();
-    if (Platform.OS === 'web') {
-      alert('Data check complete!');
-    } else {
-      Alert.alert('Complete', 'Data update check complete.');
-    }
-  };
-
-  const handleResetData = () => {
-    const doReset = async () => {
-      await resetToBundle();
-      if (Platform.OS === 'web') {
-        alert('Data reset to bundled version.');
-      } else {
-        Alert.alert('Complete', 'Data reset to bundled version.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (confirm('Reset data to bundled version? This will clear any cached updates.')) {
-        doReset();
-      }
-    } else {
-      Alert.alert(
-        'Reset Data',
-        'Reset data to bundled version? This will clear any cached updates.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Reset', style: 'destructive', onPress: doReset },
-        ]
-      );
-    }
-  };
+  const router = useRouter();
+  const { preferences, setPreference, loading: prefsLoading } = useFeedPreferences();
+  const mobileNavHeight = useMobileNavHeight();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isCompactWeb = isWeb && screenWidth < 720;
+  const isMobileView = !isWeb || isCompactWeb;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <ScrollView style={styles.scrollView}>
-        {/* Data Management Section */}
-        <List.Section>
-          <List.Subheader>Sefaria Data</List.Subheader>
-          <List.Item
-            title="Library Index"
-            description={`${index?.length ?? 0} categories (${dataSources.index ?? 'loading'})`}
-            left={(props) => <List.Icon {...props} icon="bookshelf" />}
-          />
-          <Divider />
-          <List.Item
-            title="Topics"
-            description={`${(topics?.length ?? 0).toLocaleString()} topics (${dataSources.topics ?? 'loading'})`}
-            left={(props) => <List.Icon {...props} icon="tag-multiple" />}
-          />
-          <Divider />
-          <View style={styles.buttonRow}>
-            <Button
-              mode="outlined"
-              onPress={handleRefreshData}
-              disabled={isCheckingForUpdates}
-              icon={isCheckingForUpdates ? undefined : 'refresh'}
-              style={styles.dataButton}
-            >
-              {isCheckingForUpdates ? (
-                <ActivityIndicator size={16} />
+    <View style={[styles.screen, isMobileView && styles.screenMobile]}>
+      <DesktopHeader />
+      <SafeAreaView style={[styles.container, isMobileView ? styles.containerMobile : styles.containerDesktop]} edges={['bottom']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: mobileNavHeight }]}>
+          {!isMobileView && <Text style={[styles.pageTitle, styles.maxWidth, styles.pageTitleAligned]}>Settings</Text>}
+          <View style={[styles.card, styles.maxWidth, isMobileView && styles.cardMobile]}>
+
+            <List.Section>
+              <List.Subheader>Stories</List.Subheader>
+              {prefsLoading ? (
+                <View style={styles.centered}>
+                  <ActivityIndicator />
+                </View>
               ) : (
-                'Check for Updates'
+                <>
+                  <List.Item
+                    title="Texts"
+                    description="Descriptions of individual books in the Sefaria library"
+                    left={(props) => <List.Icon {...props} icon="book-open-page-variant" />}
+                    right={() => (
+                      <View style={styles.checkboxContainer}>
+                        <Checkbox
+                          status={preferences.texts ? 'checked' : 'unchecked'}
+                          onPress={() => setPreference('texts', !preferences.texts)}
+                        />
+                      </View>
+                    )}
+                  />
+                  <Divider />
+                  <List.Item
+                    title="Categories"
+                    description="Types and genres of texts like Midrash and Kabbalah"
+                    left={(props) => <List.Icon {...props} icon="shape-outline" />}
+                    right={() => (
+                      <View style={styles.checkboxContainer}>
+                        <Checkbox
+                          status={preferences.categories ? 'checked' : 'unchecked'}
+                          onPress={() => setPreference('categories', !preferences.categories)}
+                        />
+                      </View>
+                    )}
+                  />
+                  <Divider />
+                  <List.Item
+                    title="Topics"
+                    description="Jewish topics like Talmudic figures and Holidays "
+                    left={(props) => <List.Icon {...props} icon="tag-multiple" />}
+                    right={() => (
+                      <View style={styles.checkboxContainer}>
+                        <Checkbox
+                          status={preferences.topics ? 'checked' : 'unchecked'}
+                          onPress={() => setPreference('topics', !preferences.topics)}
+                        />
+                      </View>
+                    )}
+                  />
+                  <Divider />
+                  <List.Item
+                    title="Memes"
+                    description="Torah related memes submited by users"
+                    left={(props) => <List.Icon {...props} icon="image-multiple" />}
+                    right={() => (
+                      <View style={styles.checkboxContainer}>
+                        <Checkbox
+                          status={preferences.memes ? 'checked' : 'unchecked'}
+                          onPress={() => setPreference('memes', !preferences.memes)}
+                        />
+                      </View>
+                    )}
+                  />
+                </>
               )}
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={handleResetData}
-              disabled={isCheckingForUpdates}
-              icon="restore"
-              style={styles.dataButton}
-            >
-              Reset to Bundled
-            </Button>
+            </List.Section>
+
+            <List.Section>
+              <List.Subheader>Account</List.Subheader>
+              <List.Item
+                title="Profile"
+                description="Manage your profile"
+                left={(props) => <List.Icon {...props} icon="account" />}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                onPress={() => router.push('/edit-profile')}
+              />
+            </List.Section>
+
+            <View style={styles.footer}>
+              <Image
+                source={require('@/public/powered-by-sefaria.png')}
+                style={styles.sefariaLogo}
+                resizeMode="contain"
+              />
+            </View>
           </View>
-        </List.Section>
-
-        <List.Section>
-          <List.Subheader>Preferences</List.Subheader>
-          <List.Item
-            title="Notifications"
-            description="Receive push notifications"
-            left={(props) => <List.Icon {...props} icon="bell" />}
-            right={() => (
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-              />
-            )}
-          />
-          <Divider />
-          <List.Item
-            title="Dark Mode"
-            description="Use dark theme"
-            left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
-            right={() => (
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-              />
-            )}
-          />
-          <Divider />
-          <List.Item
-            title="Analytics"
-            description="Help improve the app"
-            left={(props) => <List.Icon {...props} icon="chart-line" />}
-            right={() => (
-              <Switch
-                value={analytics}
-                onValueChange={setAnalytics}
-              />
-            )}
-          />
-        </List.Section>
-
-        <List.Section>
-          <List.Subheader>Account</List.Subheader>
-          <List.Item
-            title="Profile"
-            description="Manage your profile"
-            left={(props) => <List.Icon {...props} icon="account" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Privacy"
-            description="Privacy settings"
-            left={(props) => <List.Icon {...props} icon="shield-account" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Security"
-            description="Password and authentication"
-            left={(props) => <List.Icon {...props} icon="lock" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-        </List.Section>
-
-        <List.Section>
-          <List.Subheader>About</List.Subheader>
-          <List.Item
-            title="Version"
-            description="1.0.0"
-            left={(props) => <List.Icon {...props} icon="information" />}
-          />
-          <Divider />
-          <List.Item
-            title="Terms of Service"
-            left={(props) => <List.Icon {...props} icon="file-document" />}
-            right={(props) => <List.Icon {...props} icon="open-in-new" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Privacy Policy"
-            left={(props) => <List.Icon {...props} icon="shield-check" />}
-            right={(props) => <List.Icon {...props} icon="open-in-new" />}
-            onPress={() => {}}
-          />
-          <Divider />
-          <List.Item
-            title="Open Source Licenses"
-            left={(props) => <List.Icon {...props} icon="code-tags" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => {}}
-          />
-        </List.Section>
-
-        <View style={styles.footer}>
-          <Text variant="bodySmall" style={styles.footerText}>
-            Built with React Native & Expo
-          </Text>
-          <Text variant="bodySmall" style={styles.footerText}>
-            Data provided by Sefaria.org
-          </Text>
-          <View style={styles.iconRow}>
-            <MaterialCommunityIcons
-              name="react"
-              size={24}
-              color={theme.colors.primary}
-            />
-            <MaterialCommunityIcons
-              name="cellphone"
-              size={24}
-              color={theme.colors.primary}
-            />
-            <MaterialCommunityIcons
-              name="web"
-              size={24}
-              color={theme.colors.primary}
-            />
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+      <MobileNav />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  screenMobile: {
+    backgroundColor: colors.white,
+  },
   container: {
     flex: 1,
+  },
+  containerDesktop: {
+    backgroundColor: colors.hotPinkLight,
+  },
+  containerMobile: {
+    backgroundColor: colors.white,
   },
   scrollView: {
     flex: 1,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    padding: 16,
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    alignItems: 'center',
   },
-  dataButton: {
-    flex: 1,
-    minWidth: 140,
+  maxWidth: {
+    width: '100%',
+    maxWidth: 760,
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.gray[900],
+    marginTop: 48,
+    marginBottom: 16,
+  },
+  pageTitleAligned: {
+    paddingLeft: 20,
+  },
+  checkboxContainer: {
+    transform: [{ scale: 1.3 }],
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    width: '100%',
+  },
+  cardMobile: {
+    borderWidth: 0,
+    borderRadius: 0,
+    padding: 0,
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
   },
-  footerText: {
-    opacity: 0.6,
-    marginBottom: 8,
+  sefariaLogo: {
+    width: 200,
+    height: 60,
   },
-  iconRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 4,
+  centered: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
 });

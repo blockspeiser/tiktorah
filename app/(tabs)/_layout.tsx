@@ -9,10 +9,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.hotPink,
         tabBarInactiveTintColor: colors.gray[400],
-        tabBarStyle: Platform.OS === 'web' ? { display: 'none' } : {
-          backgroundColor: colors.white,
-          borderTopColor: colors.gray[200],
-        },
+        tabBarStyle: { display: 'none' },
         headerStyle: {
           backgroundColor: colors.white,
         },
@@ -25,6 +22,7 @@ export default function TabLayout() {
         options={{
           title: 'Feed',
           headerShown: false,
+          tabBarStyle: { display: 'none' },
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="play-box-multiple" size={size} color={color} />
           ),
@@ -43,6 +41,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="cog" size={size} color={color} />
           ),

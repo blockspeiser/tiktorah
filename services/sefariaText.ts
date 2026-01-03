@@ -6,6 +6,8 @@ const SEFARIA_TOPIC_API_URL = 'https://www.sefaria.org/api/v2/topics';
 export interface TextExcerpt {
   ref: string;
   text: string;
+  categories?: string[];
+  category?: string | null;
 }
 
 function stripHtml(value: string): string {
@@ -58,13 +60,23 @@ export async function fetchTextExcerpt(title: string): Promise<TextExcerpt | nul
     const payload = await response.json();
     const ref = extractRef(payload) ?? title;
     const text = findFirstText(payload.text) ?? findFirstText(payload.he);
+    const categories = Array.isArray(payload.categories)
+      ? payload.categories.filter((entry: unknown) => typeof entry === 'string')
+      : [];
+    const category = categories.length > 0 ? categories[0] : null;
 
     if (!text) return null;
 
-    return { ref, text };
+    return { ref, text, categories, category };
   } catch (error) {
     return null;
   }
+}
+
+export async function fetchCitationPreview(ref: string): Promise<TextExcerpt | null> {
+  const queryRef = ref.trim();
+  if (!queryRef) return null;
+  return fetchTextExcerpt(queryRef);
 }
 
 // Fetch the first "about" ref for a topic

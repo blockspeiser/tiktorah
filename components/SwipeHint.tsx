@@ -9,7 +9,7 @@ export function SwipeHint() {
     <View style={styles.container}>
       <MaterialCommunityIcons
         name="chevron-up"
-        size={48}
+        size={64}
         color={colors.gray[400]}
       />
       <Text style={styles.text}>Swipe for more</Text>
@@ -20,15 +20,15 @@ export function SwipeHint() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 16,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   text: {
-    fontSize: 18,
+    fontSize: 22,
     color: colors.gray[400],
     fontWeight: '500',
-    marginTop: -8,
+    marginTop: -12,
   },
 });

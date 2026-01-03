@@ -11,19 +11,24 @@ import {
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSefaria } from '@/contexts/SefariaContext';
+import { useFeedPreferences } from '@/hooks/useFeedPreferences';
 import { buildCardPool, getRandomCard, CardPool } from '@/services/cardGenerator';
 import { FeedCard, TextCard, TopicCard, GenreCard } from '@/types/cards';
 import { FeedCardRenderer } from '@/components/FeedCardRenderer';
 import { SwipeHint } from '@/components/SwipeHint';
 import { DataModal } from '@/components/DataModal';
 import { SplashScreen } from '@/components/SplashScreen';
+import { DesktopHeader } from '@/components/DesktopHeader';
 import { colors } from '@/constants/colors';
 import { fetchTextExcerpt, fetchTopicExcerpt, TextExcerpt } from '@/services/sefariaText';
+import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
 
 const SPLASH_MIN_DURATION = 1000; // 1 second minimum
 
 // Phone dimensions for web mock (9:16 aspect ratio - standard mobile)
 const PHONE_ASPECT_RATIO = 9 / 16;
+const DESKTOP_HEADER_HEIGHT = 72;
+const DESKTOP_GAP = 40;
 const INITIAL_CARD_COUNT = 5;
 const PRELOAD_QUEUE_COUNT = 5;
 const MIN_DESCRIPTION_WORDS = 15;
@@ -31,6 +36,8 @@ const MIN_DESCRIPTION_WORDS = 15;
 export default function FeedScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { index, topics, isLoading } = useSefaria();
+  const { preferences } = useFeedPreferences();
+  const mobileNavHeight = useMobileNavHeight();
   const [cardPool, setCardPool] = useState<CardPool | null>(null);
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,14 +52,27 @@ export default function FeedScreen() {
   const isLoadingMoreRef = useRef(false);
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && (screenWidth < 720 || screenHeight < 720);
-  const phoneHeight = isWeb && !isCompactWeb ? Math.min(screenHeight - 40, 850) : screenHeight;
+  const showHeader = isWeb && !isCompactWeb;
+  const isMobileView = !isWeb || isCompactWeb;
+  const phoneHeight = isWeb && !isCompactWeb
+    ? Math.max(520, screenHeight - DESKTOP_HEADER_HEIGHT - (DESKTOP_GAP * 2))
+    : Math.max(320, screenHeight - mobileNavHeight);
   const phoneWidth = isWeb && !isCompactWeb ? phoneHeight * PHONE_ASPECT_RATIO : screenWidth;
 
   const countWords = useCallback((value: string) => {
     return value.trim().split(/\s+/).filter(Boolean).length;
   }, []);
 
+  const isCardTypeEnabled = useCallback((card: FeedCard) => {
+    if (card.type === 'text') return preferences.texts;
+    if (card.type === 'genre') return preferences.categories;
+    if (card.type === 'topic') return preferences.topics;
+    if (card.type === 'author') return preferences.topics;
+    return true;
+  }, [preferences]);
+
   const shouldSkipCard = useCallback((card: FeedCard) => {
+    if (!isCardTypeEnabled(card)) return true;
     const isShortDescription = countWords(card.description) < MIN_DESCRIPTION_WORDS;
     if (!isShortDescription) return false;
 
@@ -70,7 +90,7 @@ export default function FeedScreen() {
     }
 
     return true;
-  }, [countWords]);
+  }, [countWords, isCardTypeEnabled]);
 
   const hydrateCard = useCallback(async (card: FeedCard): Promise<FeedCard | null> => {
     // Handle text cards - fetch text excerpt
@@ -238,9 +258,6 @@ export default function FeedScreen() {
     }
   }, [currentIndex, cards.length, loadMoreCards]);
 
-  // Check if we should show mobile swipe hint (mobile native or compact web, first card only)
-  const isMobileView = !isWeb || isCompactWeb;
-
   // Render each card
   const renderCard = useCallback(
     ({ item, index: itemIndex }: { item: FeedCard; index: number }) => (
@@ -260,13 +277,26 @@ export default function FeedScreen() {
   // Show splash screen until both: data is loaded AND minimum time has elapsed
   const isReady = !isLoading && cardPool && cards.length > 0 && splashMinTimeElapsed;
 
+  useEffect(() => {
+    if (!cardPool) return;
+    setCards((prev) => prev.filter(isCardTypeEnabled));
+    preloadedRef.current = preloadedRef.current.filter(isCardTypeEnabled);
+    if (currentIndex >= preloadedRef.current.length && currentIndex >= cards.length - 1) {
+      setCurrentIndex(0);
+      flatListRef.current?.scrollToIndex({ index: 0, animated: false });
+    }
+  }, [preferences, isCardTypeEnabled, cardPool, currentIndex, cards.length]);
+
   if (!isReady) {
-    // On desktop, show splash within the mock phone container
-    if (isWeb && !isCompactWeb) {
+    // On desktop, show splash within the mock phone container with header
+    if (showHeader) {
       return (
         <View style={styles.webWrapper}>
-          <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
-            <SplashScreen />
+          <DesktopHeader />
+          <View style={styles.webContent}>
+            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
+              <SplashScreen />
+            </View>
           </View>
         </View>
       );
@@ -305,36 +335,39 @@ export default function FeedScreen() {
   const currentCard = cards[currentIndex] ?? null;
 
   // On web, wrap in mock phone view
-  if (isWeb && !isCompactWeb) {
+  if (showHeader) {
     return (
       <View style={styles.webWrapper}>
-        <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
-          {feedContent}
+        <DesktopHeader />
+        <View style={styles.webContent}>
+          <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
+            {feedContent}
+          </View>
+
+          {/* See Data button - positioned outside mock phone */}
+          <Pressable
+            style={styles.seeDataButton}
+            onPress={() => setShowDataModal(true)}
+          >
+            <MaterialCommunityIcons name="code-json" size={20} color={colors.hotPink} />
+          </Pressable>
+
+          {/* Data Modal */}
+          <DataModal
+            visible={showDataModal}
+            onClose={() => setShowDataModal(false)}
+            card={currentCard}
+          />
         </View>
-
-        {/* See Data button - positioned outside mock phone */}
-        <Pressable
-          style={styles.seeDataButton}
-          onPress={() => setShowDataModal(true)}
-        >
-          <MaterialCommunityIcons name="code-json" size={20} color={colors.hotPink} />
-          <Text style={styles.seeDataText}>See Data</Text>
-        </Pressable>
-
-        {/* Data Modal */}
-        <DataModal
-          visible={showDataModal}
-          onClose={() => setShowDataModal(false)}
-          card={currentCard}
-        />
       </View>
     );
   }
 
   // On mobile, full screen
   return (
-    <View style={styles.mobileContainer}>
+    <View style={[styles.mobileContainer, { paddingBottom: mobileNavHeight }]}>
       {feedContent}
+      <MobileNav />
     </View>
   );
 }
@@ -343,8 +376,15 @@ const styles = StyleSheet.create({
   webWrapper: {
     flex: 1,
     backgroundColor: colors.hotPinkLight,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  webContent: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: DESKTOP_GAP,
+    paddingBottom: DESKTOP_GAP,
   },
   phoneContainer: {
     backgroundColor: colors.white,
@@ -359,24 +399,18 @@ const styles = StyleSheet.create({
   },
   seeDataButton: {
     position: 'absolute',
-    top: 20,
+    bottom: 20,
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: colors.white,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  seeDataText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.hotPink,
   },
 });
