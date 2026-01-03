@@ -12,7 +12,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSefaria } from '@/contexts/SefariaContext';
 import { buildCardPool, getRandomCard, CardPool } from '@/services/cardGenerator';
-import { FeedCard, TextCard, TopicCard } from '@/types/cards';
+import { FeedCard, TextCard, TopicCard, GenreCard } from '@/types/cards';
 import { FeedCardRenderer } from '@/components/FeedCardRenderer';
 import { SwipeHint } from '@/components/SwipeHint';
 import { DataModal } from '@/components/DataModal';
@@ -41,6 +41,7 @@ export default function FeedScreen() {
   const cardPoolRef = useRef<CardPool | null>(null);
   const textExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
   const topicExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
+  const genreExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
   const isLoadingMoreRef = useRef(false);
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && (screenWidth < 720 || screenHeight < 720);
@@ -60,6 +61,12 @@ export default function FeedScreen() {
     }
     if (card.type === 'author') {
       return !card.image;
+    }
+    if (card.type === 'genre') {
+      return !card.excerpt;
+    }
+    if (card.type === 'topic') {
+      return !card.excerpt;
     }
 
     return true;
@@ -103,7 +110,27 @@ export default function FeedScreen() {
       return shouldSkipCard(card) ? null : card;
     }
 
-    // Other card types (author, genre)
+    // Handle genre cards - fetch excerpt from first book in category
+    if (card.type === 'genre' && card.firstBookTitle) {
+      const cacheKey = card.firstBookTitle;
+      const cached = genreExcerptCacheRef.current.get(cacheKey);
+      if (cached) {
+        const hydrated = { ...card, excerpt: cached } as GenreCard;
+        return shouldSkipCard(hydrated) ? null : hydrated;
+      }
+
+      const excerpt = await fetchTextExcerpt(card.firstBookTitle);
+      if (excerpt) {
+        genreExcerptCacheRef.current.set(cacheKey, excerpt);
+        const hydrated = { ...card, excerpt } as GenreCard;
+        return shouldSkipCard(hydrated) ? null : hydrated;
+      }
+
+      // Genres without excerpts are still valid if they pass other checks
+      return shouldSkipCard(card) ? null : card;
+    }
+
+    // Other card types (author, genre without firstBookTitle)
     return shouldSkipCard(card) ? null : card;
   }, [shouldSkipCard]);
 

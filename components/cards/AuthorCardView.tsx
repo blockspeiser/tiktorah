@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { AuthorCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
+import { CardLayout } from './CardLayout';
 import { CardLinks } from './CardLinks';
 import { MarkdownText } from '@/components/MarkdownText';
 import { SmartImage } from '@/components/SmartImage';
@@ -13,6 +14,7 @@ import { buildSefariaTopicUrl } from '@/utils/links';
 interface AuthorCardViewProps {
   card: AuthorCard;
   onNextCard?: () => void;
+  cardHeight?: number;
 }
 
 // Map generation codes to readable text
@@ -48,7 +50,7 @@ function formatGeneration(gen: string | undefined): string | null {
   return generationMap[gen] ?? gen;
 }
 
-export function AuthorCardView({ card, onNextCard }: AuthorCardViewProps) {
+export function AuthorCardView({ card, onNextCard, cardHeight }: AuthorCardViewProps) {
   const generation = formatGeneration(card.generation);
   const accentColor = useMemo(() => palette.randomColor(), [card.id]);
   const typeLabel = card.displayType ?? 'Author';
@@ -66,14 +68,8 @@ export function AuthorCardView({ card, onNextCard }: AuthorCardViewProps) {
     ...(card.wikiLink ? [{ label: 'Wikipedia', url: card.wikiLink }] : []),
   ];
 
-  return (
-    <CardWrapper
-      type={typeLabel}
-      icon="account"
-      accentColor={accentColor}
-      onNextCard={onNextCard}
-    >
-      {/* Image with smart cropping */}
+  const renderHeader = (
+    <View>
       {card.image && (
         <View style={styles.imageContainer}>
           <SmartImage
@@ -90,22 +86,35 @@ export function AuthorCardView({ card, onNextCard }: AuthorCardViewProps) {
         </View>
       )}
 
-      {/* Title */}
       <Text style={styles.title}>
         {card.title}
       </Text>
 
-      {/* Metadata line */}
       {metaLine && (
         <Text style={styles.meta}>
           {metaLine}
         </Text>
       )}
+    </View>
+  );
 
-      {/* Description with truncation */}
-      <MarkdownText maxHeight={card.image ? 200 : 350}>{card.description}</MarkdownText>
+  const renderDescription = (maxHeight?: number) => (
+    <MarkdownText maxHeight={maxHeight}>{card.description}</MarkdownText>
+  );
 
-      <CardLinks links={links} />
+  return (
+    <CardWrapper
+      type={typeLabel}
+      icon="account"
+      accentColor={accentColor}
+      onNextCard={onNextCard}
+    >
+      <CardLayout
+        cardHeight={cardHeight}
+        header={renderHeader}
+        description={renderDescription}
+        footer={<CardLinks links={links} />}
+      />
     </CardWrapper>
   );
 }

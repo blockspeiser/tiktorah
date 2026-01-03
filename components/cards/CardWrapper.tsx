@@ -4,6 +4,11 @@ import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 
+export const CARD_ACCENT_HEIGHT = 24;
+export const CARD_PADDING = 28;
+export const CARD_PADDING_TOP = 28;
+export const CARD_PADDING_BOTTOM = 60;
+
 interface CardWrapperProps {
   children: ReactNode;
   type: string;
@@ -59,14 +64,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   accentBar: {
-    height: 24,
+    height: CARD_ACCENT_HEIGHT,
     width: '100%',
   },
   cardContent: {
     flex: 1,
-    padding: 28,
-    paddingTop: 28,
-    paddingBottom: 60,
+    padding: CARD_PADDING,
+    paddingTop: CARD_PADDING_TOP,
+    paddingBottom: CARD_PADDING_BOTTOM,
   },
   contentWrapper: {
     flex: 1,

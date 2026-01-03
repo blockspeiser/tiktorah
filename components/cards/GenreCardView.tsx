@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { GenreCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
+import { CardLayout } from './CardLayout';
 import { CardLinks } from './CardLinks';
 import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
@@ -12,15 +13,48 @@ import { buildSefariaCategoryUrl } from '@/utils/links';
 interface GenreCardViewProps {
   card: GenreCard;
   onNextCard?: () => void;
+  cardHeight?: number;
 }
 
-export function GenreCardView({ card, onNextCard }: GenreCardViewProps) {
+export function GenreCardView({ card, onNextCard, cardHeight }: GenreCardViewProps) {
   const breadcrumb = card.parentCategories.length > 0
     ? card.parentCategories.join(' › ')
     : null;
   const accentColor = palette.categoryColor(card.category);
   const categoryPath = [...card.parentCategories, card.category].filter(Boolean);
   const sefariaUrl = buildSefariaCategoryUrl(categoryPath);
+
+  const renderHeader = (
+    <View>
+      {breadcrumb && (
+        <Text style={styles.breadcrumb}>
+          {breadcrumb}
+        </Text>
+      )}
+      <Text style={styles.title}>
+        {card.title}
+      </Text>
+    </View>
+  );
+
+  const renderDescription = (maxHeight?: number) => (
+    <MarkdownText maxHeight={maxHeight}>{card.description}</MarkdownText>
+  );
+
+  const renderExcerpt = (maxHeight?: number) => {
+    if (!card.excerpt) return null;
+    const lineHeight = 30;
+    const usableHeight = maxHeight ? Math.max(0, maxHeight - 30 - 8 - 28) : 0;
+    const lines = maxHeight ? Math.max(1, Math.floor(usableHeight / lineHeight)) : undefined;
+    return (
+      <View style={[styles.excerptBox, { borderLeftColor: accentColor, maxHeight }]}>
+        <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
+        <Text style={styles.excerptText} numberOfLines={lines} ellipsizeMode="tail">
+          {card.excerpt.text}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <CardWrapper
@@ -30,25 +64,22 @@ export function GenreCardView({ card, onNextCard }: GenreCardViewProps) {
       iconColor={accentColor}
       onNextCard={onNextCard}
     >
-      {/* Breadcrumb path */}
-      {breadcrumb && (
-        <Text style={styles.breadcrumb}>
-          {breadcrumb}
-        </Text>
-      )}
-
-      {/* Title */}
-      <Text style={styles.title}>
-        {card.title}
-      </Text>
-
-      {/* Description with truncation */}
-      <MarkdownText maxHeight={400}>{card.description}</MarkdownText>
-
-      <CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />
+      <CardLayout
+        cardHeight={cardHeight}
+        header={renderHeader}
+        description={renderDescription}
+        extra={card.excerpt ? renderExcerpt : undefined}
+        footer={<CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />}
+      />
     </CardWrapper>
   );
 }
+
+const serifFont = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
 
 const styles = StyleSheet.create({
   breadcrumb: {
@@ -62,5 +93,28 @@ const styles = StyleSheet.create({
     color: colors.gray[900],
     marginTop: 28,
     marginBottom: 6,
+  },
+  excerptBox: {
+    marginTop: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderLeftWidth: 6,
+    borderColor: colors.gray[300],
+    borderRadius: 6,
+    backgroundColor: colors.white,
+    overflow: 'hidden',
+  },
+  excerptRef: {
+    fontSize: 20,
+    lineHeight: 30,
+    color: colors.gray[500],
+    marginBottom: 8,
+    fontFamily: serifFont,
+  },
+  excerptText: {
+    fontSize: 20,
+    lineHeight: 30,
+    color: colors.gray[700],
+    fontFamily: serifFont,
   },
 });

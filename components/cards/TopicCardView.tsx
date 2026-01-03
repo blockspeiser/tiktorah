@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { TopicCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
+import { CardLayout } from './CardLayout';
 import { CardLinks } from './CardLinks';
 import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
@@ -16,8 +17,6 @@ interface TopicCardViewProps {
 }
 
 export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewProps) {
-  const { height: screenHeight } = useWindowDimensions();
-  const effectiveHeight = cardHeight ?? screenHeight;
   const sourceCount = card.numSources && card.numSources > 0
     ? `${card.numSources.toLocaleString()} sources on Sefaria`
     : null;
@@ -28,28 +27,37 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
     ...(card.wikiLink ? [{ label: 'Wikipedia', url: card.wikiLink }] : []),
   ];
   const typeLabel = card.displayType ?? 'Topic';
+  const renderHeader = (
+    <View>
+      <Text style={styles.title}>
+        {card.title}
+      </Text>
+      {sourceCount && (
+        <Text style={styles.meta}>
+          {sourceCount}
+        </Text>
+      )}
+    </View>
+  );
 
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [descriptionHeight, setDescriptionHeight] = useState(0);
-  const [linksHeight, setLinksHeight] = useState(0);
+  const renderDescription = (maxHeight?: number) => (
+    <MarkdownText maxHeight={maxHeight}>{card.description}</MarkdownText>
+  );
 
-  const contentHeight = Math.max(0, effectiveHeight - 24 - 28 - 60);
-  const availableBodyHeight = Math.max(0, contentHeight - headerHeight - linksHeight - 12);
-  const maxDescriptionHeight = availableBodyHeight > 0
-    ? Math.min(availableBodyHeight, Math.max(140, availableBodyHeight - 120))
-    : undefined;
-  const maxExcerptHeight = useMemo(() => {
-    if (!availableBodyHeight) return undefined;
-    const reservedForDescription = Math.min(descriptionHeight || maxDescriptionHeight || 0, availableBodyHeight);
-    return Math.max(0, availableBodyHeight - reservedForDescription);
-  }, [availableBodyHeight, descriptionHeight, maxDescriptionHeight]);
-
-  const excerptLines = useMemo(() => {
-    if (!maxExcerptHeight || maxExcerptHeight <= 0) return undefined;
-    const usableHeight = maxExcerptHeight - 28 - 8 - 26;
-    if (usableHeight <= 0) return 1;
-    return Math.max(1, Math.floor(usableHeight / 26));
-  }, [maxExcerptHeight]);
+  const renderExcerpt = (maxHeight?: number) => {
+    if (!card.excerpt) return null;
+    const lineHeight = 30;
+    const usableHeight = maxHeight ? Math.max(0, maxHeight - 30 - 8 - 28) : 0;
+    const lines = maxHeight ? Math.max(1, Math.floor(usableHeight / lineHeight)) : undefined;
+    return (
+      <View style={[styles.excerptBox, { borderLeftColor: accentColor, maxHeight }]}>
+        <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
+        <Text style={styles.excerptText} numberOfLines={lines} ellipsizeMode="tail">
+          {card.excerpt.text}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <CardWrapper
@@ -58,38 +66,13 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
       accentColor={accentColor}
       onNextCard={onNextCard}
     >
-      <View onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
-        {/* Title */}
-        <Text style={styles.title}>
-          {card.title}
-        </Text>
-
-        {/* Source count */}
-        {sourceCount && (
-          <Text style={styles.meta}>
-            {sourceCount}
-          </Text>
-        )}
-      </View>
-
-      <View onLayout={(event) => setDescriptionHeight(event.nativeEvent.layout.height)}>
-        <MarkdownText maxHeight={maxDescriptionHeight}>{card.description}</MarkdownText>
-      </View>
-
-      {card.excerpt && (maxExcerptHeight === undefined || maxExcerptHeight > 0) && (
-        <View
-          style={[styles.excerptBox, { borderLeftColor: accentColor, maxHeight: maxExcerptHeight }]}
-        >
-          <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
-          <Text style={styles.excerptText} numberOfLines={excerptLines} ellipsizeMode="tail">
-            {card.excerpt.text}
-          </Text>
-        </View>
-      )}
-
-      <View onLayout={(event) => setLinksHeight(event.nativeEvent.layout.height)}>
-        <CardLinks links={links} />
-      </View>
+      <CardLayout
+        cardHeight={cardHeight}
+        header={renderHeader}
+        description={renderDescription}
+        extra={card.excerpt ? renderExcerpt : undefined}
+        footer={<CardLinks links={links} />}
+      />
     </CardWrapper>
   );
 }

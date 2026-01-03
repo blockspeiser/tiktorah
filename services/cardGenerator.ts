@@ -24,6 +24,25 @@ interface FlattenedItem {
   path: string[];
 }
 
+// Find the first book (text) in a category's contents
+function findFirstBook(contents: SefariaCategory[] | undefined): string | null {
+  if (!contents) return null;
+
+  for (const item of contents) {
+    // If this is a text (has title), return it
+    if (item.title) {
+      return item.title;
+    }
+    // If this is a category, recurse into its contents
+    if (item.contents) {
+      const found = findFirstBook(item.contents);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
 function flattenIndex(items: SefariaIndex, path: string[] = []): FlattenedItem[] {
   const result: FlattenedItem[] = [];
 
@@ -54,6 +73,8 @@ function flattenIndex(items: SefariaIndex, path: string[] = []): FlattenedItem[]
 
 // Convert index item to GenreCard - only call if description is validated
 function indexToGenreCard(item: SefariaCategory, path: string[], description: string): GenreCard {
+  const firstBookTitle = findFirstBook(item.contents) ?? undefined;
+
   return {
     id: `genre-${item.category}-${path.join('-')}`,
     type: 'genre',
@@ -61,6 +82,7 @@ function indexToGenreCard(item: SefariaCategory, path: string[], description: st
     description, // Already validated
     category: item.category ?? '',
     parentCategories: path,
+    firstBookTitle,
   };
 }
 

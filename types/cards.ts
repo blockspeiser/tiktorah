@@ -13,6 +13,11 @@ export interface GenreCard extends BaseCard {
   type: 'genre';
   category: string;
   parentCategories: string[];
+  firstBookTitle?: string;
+  excerpt?: {
+    ref: string;
+    text: string;
+  };
 }
 
 export interface TextCard extends BaseCard {

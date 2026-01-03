@@ -82,6 +82,7 @@ export type SefariaTopic = {
   alt_ids?: {
     wikidata?: string;
     _temp_id?: string;
+    _temp_toc_id?: string;
     _old_slug?: string;
     'old-person-key'?: string;
   };
