@@ -32,7 +32,7 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   if (typeof value === 'string') {
     // Truncate very long strings for display
     const displayValue = value.length > 500 ? value.substring(0, 500) + '...' : value;
-    return <Text style={styles.stringValue}>"{displayValue}"</Text>;
+    return <Text style={styles.stringValue}>&quot;{displayValue}&quot;</Text>;
   }
 
   if (typeof value === 'number') {
@@ -71,7 +71,7 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
         <Text style={styles.bracket}>{'{'}</Text>
         {entries.map(([key, val], index) => (
           <View key={key} style={[styles.row, { marginLeft: indent + 16 }]}>
-            <Text style={styles.key}>"{key}"</Text>
+            <Text style={styles.key}>&quot;{key}&quot;</Text>
             <Text style={styles.punctuation}>: </Text>
             <JsonValue value={val} depth={depth + 1} />
             {index < entries.length - 1 && <Text style={styles.punctuation}>,</Text>}

@@ -1,10 +1,16 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, initializeAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getReactNativePersistence } from 'firebase/auth';
+
+// getReactNativePersistence is exported from @firebase/auth only in react-native context
+// TypeScript doesn't understand conditional exports, so we use require
+const getReactNativePersistence = Platform.OS !== 'web'
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ? require('@firebase/auth').getReactNativePersistence
+  : null;
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -16,15 +22,52 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Lazy initialization to avoid errors during static build
+let _app: FirebaseApp | null = null;
+let _auth: Auth | null = null;
+let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
-const auth = Platform.OS === 'web'
-  ? getAuth(app)
-  : initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
+function getApp(): FirebaseApp {
+  if (!_app) {
+    _app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  }
+  return _app;
+}
 
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Lazy getter for auth - only initializes when actually accessed at runtime
+const auth = {
+  get current(): Auth {
+    if (!_auth) {
+      const app = getApp();
+      _auth = Platform.OS === 'web'
+        ? getAuth(app)
+        : initializeAuth(app, {
+            persistence: getReactNativePersistence!(AsyncStorage),
+          });
+    }
+    return _auth;
+  }
+};
 
-export { app, auth, db, storage };
+const db = {
+  get current(): Firestore {
+    if (!_db) {
+      _db = getFirestore(getApp());
+    }
+    return _db;
+  }
+};
+
+const storage = {
+  get current(): FirebaseStorage {
+    if (!_storage) {
+      _storage = getStorage(getApp());
+    }
+    return _storage;
+  }
+};
+
+// Export getters that provide lazy access
+export { auth, db, storage };
+export const app = { get current() { return getApp(); } };

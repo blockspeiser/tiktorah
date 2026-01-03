@@ -31,7 +31,7 @@ export default function SettingsScreen() {
           <View style={[styles.card, styles.maxWidth, isMobileView && styles.cardMobile]}>
 
             <List.Section>
-              <List.Subheader>Stories</List.Subheader>
+              <List.Subheader style={styles.sectionHeader}>Stories</List.Subheader>
               {prefsLoading ? (
                 <View style={styles.centered}>
                   <ActivityIndicator />
@@ -98,7 +98,7 @@ export default function SettingsScreen() {
             </List.Section>
 
             <List.Section>
-              <List.Subheader>Account</List.Subheader>
+              <List.Subheader style={styles.sectionHeader}>Account</List.Subheader>
               <List.Item
                 title="Profile"
                 description="Manage your profile"
@@ -182,9 +182,15 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
     paddingHorizontal: 24,
   },
+  sectionHeader: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.gray[900],
+    marginBottom: 4,
+  },
   sefariaLogo: {
-    width: 200,
-    height: 60,
+    width: 280,
+    height: 84,
   },
   centered: {
     alignItems: 'center',

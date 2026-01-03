@@ -44,12 +44,12 @@ export interface MemeDoc {
 }
 
 export async function getProfile(uid: string) {
-  const ref = doc(db, 'profiles', uid);
+  const ref = doc(db.current, 'profiles', uid);
   return getDoc(ref);
 }
 
 export async function createProfile(uid: string, data: Omit<ProfileDoc, 'createdAt' | 'modifiedAt'>) {
-  const ref = doc(db, 'profiles', uid);
+  const ref = doc(db.current, 'profiles', uid);
   return setDoc(ref, {
     ...data,
     createdAt: serverTimestamp(),
@@ -58,7 +58,7 @@ export async function createProfile(uid: string, data: Omit<ProfileDoc, 'created
 }
 
 export async function updateProfile(uid: string, data: Partial<ProfileDoc>) {
-  const ref = doc(db, 'profiles', uid);
+  const ref = doc(db.current, 'profiles', uid);
   return updateDoc(ref, {
     ...data,
     modifiedAt: serverTimestamp(),
@@ -66,7 +66,7 @@ export async function updateProfile(uid: string, data: Partial<ProfileDoc>) {
 }
 
 export async function createMeme(memeId: string, data: Omit<MemeDoc, 'createdAt' | 'modifiedAt'>) {
-  const ref = doc(db, 'memes', memeId);
+  const ref = doc(db.current, 'memes', memeId);
   return setDoc(ref, {
     ...data,
     createdAt: serverTimestamp(),
@@ -75,7 +75,7 @@ export async function createMeme(memeId: string, data: Omit<MemeDoc, 'createdAt'
 }
 
 export async function updateMeme(memeId: string, data: Partial<MemeDoc>) {
-  const ref = doc(db, 'memes', memeId);
+  const ref = doc(db.current, 'memes', memeId);
   return updateDoc(ref, {
     ...data,
     modifiedAt: serverTimestamp(),
@@ -83,7 +83,7 @@ export async function updateMeme(memeId: string, data: Partial<MemeDoc>) {
 }
 
 export async function deleteMemeDoc(memeId: string) {
-  const ref = doc(db, 'memes', memeId);
+  const ref = doc(db.current, 'memes', memeId);
   return deleteDoc(ref);
 }
 
@@ -92,7 +92,7 @@ export function subscribeToMyMemes(
   callback: (docs: { id: string; data: MemeDoc }[]) => void,
   onError?: (error: Error) => void
 ) {
-  const memesRef = collection(db, 'memes');
+  const memesRef = collection(db.current, 'memes');
   const q = query(memesRef, where('ownerUid', '==', uid), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,

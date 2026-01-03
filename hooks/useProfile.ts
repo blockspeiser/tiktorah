@@ -23,7 +23,7 @@ export function useProfile(uid?: string) {
 
     setLoading(true);
     setError(null);
-    const ref = doc(db, 'profiles', uid);
+    const ref = doc(db.current, 'profiles', uid);
     const unsubscribe = onSnapshot(
       ref,
       (snap) => {

@@ -555,6 +555,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gray[300],

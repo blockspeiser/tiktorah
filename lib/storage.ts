@@ -47,7 +47,7 @@ export async function uploadUserMeme(uid: string, memeId: string, input: UploadI
   const { blob, contentType } = await toBlob(input);
   const ext = resolveExtension(contentType, input.name);
   const storagePath = `users/${uid}/memes/${memeId}.${ext}`;
-  const storageRef = ref(storage, storagePath);
+  const storageRef = ref(storage.current, storagePath);
 
   const result = await uploadBytes(storageRef, blob, {
     contentType,
@@ -61,9 +61,9 @@ export async function uploadUserMeme(uid: string, memeId: string, input: UploadI
 }
 
 export async function getMemeDownloadUrl(storagePath: string) {
-  return getDownloadURL(ref(storage, storagePath));
+  return getDownloadURL(ref(storage.current, storagePath));
 }
 
 export async function deleteMemeStorage(storagePath: string) {
-  return deleteObject(ref(storage, storagePath));
+  return deleteObject(ref(storage.current, storagePath));
 }
