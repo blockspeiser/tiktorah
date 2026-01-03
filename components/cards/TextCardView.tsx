@@ -9,6 +9,7 @@ import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
 import palette from '@/constants/palette';
 import { buildSefariaTextUrl } from '@/utils/links';
+import { sanitizeText } from '@/services/sefariaText';
 
 interface TextCardViewProps {
   card: TextCard;
@@ -32,6 +33,11 @@ export function TextCardView({ card, onNextCard, cardHeight }: TextCardViewProps
     if (usableHeight <= 0) return undefined;
     return Math.max(1, Math.floor(usableHeight / lineHeight));
   }, [cardHeight]);
+
+  const excerptText = useMemo(() => {
+    if (!card.excerpt?.text) return null;
+    return sanitizeText(card.excerpt.text);
+  }, [card.excerpt?.text]);
 
   const renderHeader = (
     <View>
@@ -61,7 +67,7 @@ export function TextCardView({ card, onNextCard, cardHeight }: TextCardViewProps
   };
 
   const renderExcerpt = (maxHeight?: number) => {
-    if (!card.excerpt) return null;
+    if (!card.excerpt || !excerptText) return null;
     const lines = maxHeight
       ? Math.max(1, Math.floor((maxHeight - 30 - 8 - 28) / 30))
       : excerptLines;
@@ -76,7 +82,7 @@ export function TextCardView({ card, onNextCard, cardHeight }: TextCardViewProps
       >
         <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
         <Text style={styles.excerptText} numberOfLines={lines} ellipsizeMode="tail">
-          {card.excerpt.text}
+          {excerptText}
         </Text>
       </Pressable>
     );

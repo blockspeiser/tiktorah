@@ -11,8 +11,12 @@ export interface TextExcerpt {
   category?: string | null;
 }
 
-function stripHtml(value: string): string {
+export function sanitizeText(value: string): string {
   return value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function stripHtml(value: string): string {
+  return sanitizeText(value);
 }
 
 function findFirstText(value: unknown): string | null {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Image, Pressable, Modal } from 'react-native';
 import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
 import { colors } from '@/constants/colors';
-import { fetchCitationPreview } from '@/services/sefariaText';
+import { fetchCitationPreview, sanitizeText } from '@/services/sefariaText';
 
 interface MemeCardProps {
   imageUrl: string;
@@ -38,7 +38,7 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
   const [nextLink, setNextLink] = useState(memeLink ?? '');
   const [citationInput, setCitationInput] = useState(citation ?? '');
   const [citationPreview, setCitationPreview] = useState<{ ref: string; text: string; category?: string | null } | null>(
-    citation && citationText ? { ref: citation, text: citationText, category: citationCategory } : null
+    citation && citationText ? { ref: citation, text: sanitizeText(citationText), category: citationCategory } : null
   );
   const [citationError, setCitationError] = useState<string | null>(null);
   const [citationLoading, setCitationLoading] = useState(false);
@@ -50,7 +50,7 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
     setNextCaption(caption ?? '');
     setNextLink(memeLink ?? '');
     setCitationInput(citation ?? '');
-    setCitationPreview(citation && citationText ? { ref: citation, text: citationText, category: citationCategory } : null);
+    setCitationPreview(citation && citationText ? { ref: citation, text: sanitizeText(citationText), category: citationCategory } : null);
     setCitationError(null);
     setEditing(true);
   };
@@ -99,7 +99,7 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
       nextCaption.trim(),
       nextLink.trim(),
       citationPreview.ref,
-      citationPreview.text,
+      sanitizeText(citationPreview.text),
       citationPreview.category ?? null
     );
     setSaving(false);

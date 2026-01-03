@@ -5,6 +5,7 @@ import {
   TextCardView,
   AuthorCardView,
   TopicCardView,
+  MemeCardView,
 } from './cards';
 
 interface FeedCardRendererProps {
@@ -23,6 +24,8 @@ export function FeedCardRenderer({ card, onNextCard, cardHeight }: FeedCardRende
       return <AuthorCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     case 'topic':
       return <TopicCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
+    case 'meme':
+      return <MemeCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     default:
       return null;
   }

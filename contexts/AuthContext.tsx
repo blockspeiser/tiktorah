@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { User } from 'firebase/auth';
-import { handleRedirectResult, isWeb, signInWithGoogleCredential, signInWithGoogleRedirect, signOut, subscribeToAuth, useGoogleAuthRequest } from '@/lib/auth';
+import { handleRedirectResult, isWeb, signInWithGoogleCredential, signInWithGooglePopup, signInWithGoogleRedirect, signOut, subscribeToAuth, useGoogleAuthRequest } from '@/lib/auth';
 
 interface AuthContextValue {
   user: User | null;
@@ -42,7 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     if (isWeb) {
-      await signInWithGoogleRedirect();
+      try {
+        await signInWithGooglePopup();
+      } catch (error) {
+        await signInWithGoogleRedirect();
+      }
       return;
     }
     await promptAsync();

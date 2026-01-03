@@ -61,9 +61,9 @@ export function DesktopHeader() {
             {isAuthenticated ? (
               <>
                 <Menu.Item
-                  onPress={() => { setMenuVisible(false); router.push('/edit-profile'); }}
-                  title="Edit Profile"
-                  leadingIcon="account-edit"
+                  onPress={() => { setMenuVisible(false); router.push('/profile'); }}
+                  title="Profile"
+                  leadingIcon="account"
                 />
                 <Menu.Item
                   onPress={() => { setMenuVisible(false); router.push('/(tabs)/settings'); }}
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 20,
   },
   headerInner: {

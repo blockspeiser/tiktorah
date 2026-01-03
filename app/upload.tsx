@@ -11,7 +11,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useMyMemes } from '@/hooks/useMyMemes';
 import { MemeCard } from '@/components/memes/MemeCard';
 import { colors } from '@/constants/colors';
-import { fetchCitationPreview } from '@/services/sefariaText';
+import { fetchCitationPreview, sanitizeText } from '@/services/sefariaText';
 import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
 import { DesktopHeader } from '@/components/DesktopHeader';
 
@@ -213,7 +213,7 @@ export default function UploadScreen() {
       storagePath: uploadResult.storagePath,
       contentType: uploadResult.contentType,
       citation: citationPreview.ref,
-      citationText: citationPreview.text,
+      citationText: sanitizeText(citationPreview.text),
       citationCategory: citationPreview.category ?? null,
       caption: caption.trim() || null,
       memeLink: normalizedMemeLink || null,
@@ -268,6 +268,7 @@ export default function UploadScreen() {
   const showUpload = isAuthenticated && profileExists;
   const isWide = screenWidth >= 900;
   const showLogin = isReady && !isAuthenticated;
+  const citationPreviewText = citationPreview ? sanitizeText(citationPreview.text) : null;
 
   return (
     <View style={[styles.screen, isMobileView && styles.screenMobile]}>
@@ -358,7 +359,7 @@ export default function UploadScreen() {
               <View style={[styles.citationBox, { borderLeftColor: colors['sefaria-blue'] }]}>
                 <Text style={styles.citationRef}>{citationPreview.ref}</Text>
                 <Text style={styles.citationText} numberOfLines={6} ellipsizeMode="tail">
-                  {citationPreview.text}
+                  {citationPreviewText}
                 </Text>
               </View>
             )}

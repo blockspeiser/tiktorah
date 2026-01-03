@@ -11,9 +11,12 @@ import {
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSefaria } from '@/contexts/SefariaContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMyMemes } from '@/hooks/useMyMemes';
+import { useProfile } from '@/hooks/useProfile';
 import { useFeedPreferences } from '@/hooks/useFeedPreferences';
 import { buildCardPool, getRandomCard, CardPool } from '@/services/cardGenerator';
-import { FeedCard, TextCard, TopicCard, GenreCard } from '@/types/cards';
+import { FeedCard, TextCard, TopicCard, GenreCard, MemeFeedCard } from '@/types/cards';
 import { FeedCardRenderer } from '@/components/FeedCardRenderer';
 import { SwipeHint } from '@/components/SwipeHint';
 import { DataModal } from '@/components/DataModal';
@@ -22,6 +25,7 @@ import { DesktopHeader } from '@/components/DesktopHeader';
 import { colors } from '@/constants/colors';
 import { fetchTextExcerpt, fetchTopicExcerpt, TextExcerpt } from '@/services/sefariaText';
 import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
+import { getMemeDownloadUrl } from '@/lib/storage';
 
 const SPLASH_MIN_DURATION = 1000; // 1 second minimum
 
@@ -36,6 +40,9 @@ const MIN_DESCRIPTION_WORDS = 15;
 export default function FeedScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { index, topics, isLoading } = useSefaria();
+  const { user } = useAuth();
+  const { profile } = useProfile(user?.uid);
+  const { memes, loading: memesLoading } = useMyMemes(user?.uid);
   const { preferences } = useFeedPreferences();
   const mobileNavHeight = useMobileNavHeight();
   const [cardPool, setCardPool] = useState<CardPool | null>(null);
@@ -44,6 +51,7 @@ export default function FeedScreen() {
   const [showDataModal, setShowDataModal] = useState(false);
   const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [memeCards, setMemeCards] = useState<MemeFeedCard[]>([]);
   const flatListRef = useRef<FlatList>(null);
   const preloadedRef = useRef<FeedCard[]>([]);
   const cardPoolRef = useRef<CardPool | null>(null);
@@ -59,20 +67,70 @@ export default function FeedScreen() {
     ? Math.max(520, screenHeight - DESKTOP_HEADER_HEIGHT - (DESKTOP_GAP * 2))
     : Math.max(320, screenHeight - mobileNavHeight);
   const phoneWidth = isWeb && !isCompactWeb ? phoneHeight * PHONE_ASPECT_RATIO : screenWidth;
+  const onlyMemes = preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
+  const noContentSelected = !preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
 
   const countWords = useCallback((value: string) => {
     return value.trim().split(/\s+/).filter(Boolean).length;
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!preferences.memes) {
+      setMemeCards([]);
+      return () => {
+        active = false;
+      };
+    }
+    if (memes.length === 0) {
+      setMemeCards([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    Promise.all(
+      memes.map(async (meme) => {
+        const imageUrl = await getMemeDownloadUrl(meme.data.storagePath).catch(() => '');
+        return {
+          id: `meme-${meme.id}`,
+          type: 'meme' as const,
+          title: meme.data.caption?.trim() || 'Meme',
+          description: meme.data.citationText || meme.data.caption || 'User meme',
+          imageUrl,
+          caption: meme.data.caption ?? null,
+          ownerDisplayName: profile?.displayName || user?.displayName || user?.email || null,
+          ownerProfileLink: profile?.profileLink || null,
+          citation: meme.data.citation ?? null,
+          citationText: meme.data.citationText ?? null,
+          citationCategory: meme.data.citationCategory ?? null,
+          memeLink: meme.data.memeLink ?? null,
+        };
+      })
+    ).then((cards) => {
+      if (!active) return;
+      setMemeCards(cards.filter((card) => card.imageUrl || card.citationText || card.caption));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [memes, preferences.memes, profile, user]);
 
   const isCardTypeEnabled = useCallback((card: FeedCard) => {
     if (card.type === 'text') return preferences.texts;
     if (card.type === 'genre') return preferences.categories;
     if (card.type === 'topic') return preferences.topics;
     if (card.type === 'author') return preferences.topics;
+    if (card.type === 'meme') return preferences.memes;
     return true;
   }, [preferences]);
 
   const shouldSkipCard = useCallback((card: FeedCard) => {
+    if (card.type === 'meme') {
+      const memeCard = card as MemeFeedCard;
+      return !memeCard.imageUrl && !memeCard.citationText && !memeCard.caption;
+    }
     if (!isCardTypeEnabled(card)) return true;
     const isShortDescription = countWords(card.description) < MIN_DESCRIPTION_WORDS;
     if (!isShortDescription) return false;
@@ -95,6 +153,9 @@ export default function FeedScreen() {
 
   const hydrateCard = useCallback(async (card: FeedCard): Promise<FeedCard | null> => {
     try {
+      if (card.type === 'meme') {
+        return shouldSkipCard(card) ? null : card;
+      }
       // Handle text cards - fetch text excerpt
       if (card.type === 'text') {
         const cached = textExcerptCacheRef.current.get(card.title);
@@ -163,7 +224,17 @@ export default function FeedScreen() {
 
   const buildCardBatch = useCallback(async (count: number): Promise<FeedCard[]> => {
     const pool = cardPoolRef.current;
-    if (!pool) return [];
+    if (!pool && !memeCards.length) return [];
+
+    if (onlyMemes) {
+      if (memeCards.length === 0) return [];
+      const shuffled = [...memeCards].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
+    if (!pool) {
+      const shuffled = [...memeCards].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
 
     const batch: FeedCard[] = [];
     const maxAttempts = count * 8;
@@ -171,7 +242,10 @@ export default function FeedScreen() {
 
     while (batch.length < count && attempts < maxAttempts) {
       attempts += 1;
-      const card = getRandomCard(pool);
+      const shouldUseMeme = preferences.memes && memeCards.length > 0 && Math.random() < 0.2;
+      const card = shouldUseMeme
+        ? memeCards[Math.floor(Math.random() * memeCards.length)]
+        : getRandomCard(pool);
       if (!card) continue;
 
       const hydrated = await hydrateCard(card);
@@ -180,7 +254,7 @@ export default function FeedScreen() {
       }
     }
     return batch;
-  }, [hydrateCard]);
+  }, [hydrateCard, memeCards, preferences]);
 
   // Minimum splash screen duration timer
   useEffect(() => {
@@ -310,7 +384,9 @@ export default function FeedScreen() {
   );
 
   // Show splash screen until both: data is loaded AND minimum time has elapsed
-  const isReady = !isLoading && cardPool && cards.length > 0 && splashMinTimeElapsed;
+  const isReady = splashMinTimeElapsed && (onlyMemes ? true : !isLoading) && (
+    (onlyMemes && memeCards.length > 0) || (cardPool && cards.length > 0)
+  );
   const showError = loadError && splashMinTimeElapsed;
 
   useEffect(() => {
@@ -322,6 +398,30 @@ export default function FeedScreen() {
       flatListRef.current?.scrollToIndex({ index: 0, animated: false });
     }
   }, [preferences, isCardTypeEnabled, cardPool, currentIndex, cards.length]);
+
+  useEffect(() => {
+    if (noContentSelected) {
+      setLoadError('Select at least one content type in Settings.');
+      setCards([]);
+      return;
+    }
+    if (loadError === 'Select at least one content type in Settings.') {
+      setLoadError(null);
+    }
+  }, [noContentSelected, loadError]);
+
+  useEffect(() => {
+    if (!onlyMemes) return;
+    if (memesLoading) return;
+    if (memeCards.length === 0) {
+      setLoadError('No memes available yet.');
+      setCards([]);
+      return;
+    }
+    setLoadError(null);
+    setCards(memeCards);
+    preloadedRef.current = [];
+  }, [onlyMemes, memeCards, memesLoading]);
 
   // Show error state if loading failed
   if (showError) {

@@ -9,6 +9,7 @@ import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
 import palette from '@/constants/palette';
 import { buildSefariaTopicUrl } from '@/utils/links';
+import { sanitizeText } from '@/services/sefariaText';
 
 interface TopicCardViewProps {
   card: TopicCard;
@@ -27,6 +28,10 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
     ...(card.wikiLink ? [{ label: 'Wikipedia', url: card.wikiLink }] : []),
   ];
   const typeLabel = card.displayType ?? 'Topic';
+  const excerptText = useMemo(() => {
+    if (!card.excerpt?.text) return null;
+    return sanitizeText(card.excerpt.text);
+  }, [card.excerpt?.text]);
   const renderHeader = (
     <View>
       <Text style={styles.title}>
@@ -45,7 +50,7 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
   );
 
   const renderExcerpt = (maxHeight?: number) => {
-    if (!card.excerpt) return null;
+    if (!card.excerpt || !excerptText) return null;
     const lineHeight = 30;
     const usableHeight = maxHeight ? Math.max(0, maxHeight - 30 - 8 - 28) : 0;
     const lines = maxHeight ? Math.max(1, Math.floor(usableHeight / lineHeight)) : undefined;
@@ -53,7 +58,7 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
       <View style={[styles.excerptBox, { borderLeftColor: accentColor, maxHeight }]}>
         <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
         <Text style={styles.excerptText} numberOfLines={lines} ellipsizeMode="tail">
-          {card.excerpt.text}
+          {excerptText}
         </Text>
       </View>
     );

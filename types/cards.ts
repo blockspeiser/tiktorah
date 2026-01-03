@@ -60,7 +60,19 @@ export interface TopicCard extends BaseCard {
   };
 }
 
-export type FeedCard = GenreCard | TextCard | AuthorCard | TopicCard;
+export interface MemeFeedCard extends BaseCard {
+  type: 'meme';
+  imageUrl?: string;
+  caption?: string | null;
+  ownerDisplayName?: string | null;
+  ownerProfileLink?: string | null;
+  citation?: string | null;
+  citationText?: string | null;
+  citationCategory?: string | null;
+  memeLink?: string | null;
+}
+
+export type FeedCard = GenreCard | TextCard | AuthorCard | TopicCard | MemeFeedCard;
 
 // Helper to get primary English title from topic titles array
 export function getPrimaryEnglishTitle(titles: SefariaTopic['titles']): string {

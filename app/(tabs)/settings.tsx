@@ -106,10 +106,10 @@ export default function SettingsScreen() {
               <List.Subheader style={isMobileView ? styles.sectionHeaderMobile : styles.sectionHeader}>Account</List.Subheader>
               <List.Item
                 title="Profile"
-                description="Manage your profile"
+                description="View your profile and memes"
                 left={(props) => <List.Icon {...props} icon="account" />}
                 right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => router.push('/edit-profile')}
+                onPress={() => router.push('/profile')}
               />
             </List.Section>
 
