@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, Platform, useWindowDimensions, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Platform, useWindowDimensions, Image, Pressable, Linking } from 'react-native';
 import {
   Text,
   List,
@@ -27,11 +27,16 @@ export default function SettingsScreen() {
       <DesktopHeader />
       <SafeAreaView style={[styles.container, isMobileView ? styles.containerMobile : styles.containerDesktop]} edges={['bottom']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: mobileNavHeight }]}>
-          {!isMobileView && <Text style={[styles.pageTitle, styles.maxWidth, styles.pageTitleAligned]}>Settings</Text>}
+          {isMobileView ? (
+            <Text style={[styles.mobileHeader, styles.maxWidth, styles.pageTitleAligned]}>Settings</Text>
+          ) : (
+            <Text style={[styles.pageTitle, styles.maxWidth, styles.pageTitleAligned]}>Settings</Text>
+          )}
           <View style={[styles.card, styles.maxWidth, isMobileView && styles.cardMobile]}>
+            {isMobileView && <View style={styles.mobileSectionSpacer} />}
 
             <List.Section>
-              <List.Subheader style={styles.sectionHeader}>Stories</List.Subheader>
+              <List.Subheader style={isMobileView ? styles.sectionHeaderMobile : styles.sectionHeader}>Stories</List.Subheader>
               {prefsLoading ? (
                 <View style={styles.centered}>
                   <ActivityIndicator />
@@ -98,7 +103,7 @@ export default function SettingsScreen() {
             </List.Section>
 
             <List.Section>
-              <List.Subheader style={styles.sectionHeader}>Account</List.Subheader>
+              <List.Subheader style={isMobileView ? styles.sectionHeaderMobile : styles.sectionHeader}>Account</List.Subheader>
               <List.Item
                 title="Profile"
                 description="Manage your profile"
@@ -109,11 +114,22 @@ export default function SettingsScreen() {
             </List.Section>
 
             <View style={styles.footer}>
-              <Image
-                source={require('@/public/powered-by-sefaria.png')}
-                style={styles.sefariaLogo}
-                resizeMode="contain"
-              />
+              <Pressable
+                onPress={() => {
+                  const url = 'https://www.sefaria.org';
+                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } else {
+                    Linking.openURL(url);
+                  }
+                }}
+              >
+                <Image
+                  source={require('@/public/powered-by-sefaria.png')}
+                  style={styles.sefariaLogo}
+                  resizeMode="contain"
+                />
+              </Pressable>
             </View>
           </View>
         </ScrollView>
@@ -158,6 +174,13 @@ const styles = StyleSheet.create({
     marginTop: 48,
     marginBottom: 16,
   },
+  mobileHeader: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.gray[900],
+    marginTop: 24,
+    marginBottom: 16,
+  },
   pageTitleAligned: {
     paddingLeft: 20,
   },
@@ -177,6 +200,9 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     padding: 0,
   },
+  mobileSectionSpacer: {
+    height: 12,
+  },
   footer: {
     alignItems: 'center',
     paddingVertical: 48,
@@ -188,9 +214,15 @@ const styles = StyleSheet.create({
     color: colors.gray[900],
     marginBottom: 4,
   },
+  sectionHeaderMobile: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.gray[900],
+    marginBottom: 4,
+  },
   sefariaLogo: {
-    width: 280,
-    height: 84,
+    width: 560,
+    height: 168,
   },
   centered: {
     alignItems: 'center',

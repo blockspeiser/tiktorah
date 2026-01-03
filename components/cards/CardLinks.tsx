@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     alignSelf: 'flex-start',
+    marginTop: 8,
   },
   linkButton: {
     flexDirection: 'row',

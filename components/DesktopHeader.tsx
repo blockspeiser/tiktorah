@@ -15,7 +15,7 @@ export function DesktopHeader() {
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && width < COMPACT_WEB_WIDTH;
   const showHeader = isWeb && !isCompactWeb;
-  const { user, isAuthenticated, signOutUser } = useAuth();
+  const { user, isAuthenticated, signOutUser, signInWithGoogle } = useAuth();
   const { profile } = useProfile(user?.uid);
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -36,13 +36,13 @@ export function DesktopHeader() {
             <MaterialCommunityIcons name="plus" size={18} color={colors.white} />
             <Text style={styles.uploadButtonText}>Upload</Text>
           </Pressable>
-          {isAuthenticated ? (
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchorPosition="bottom"
-              contentStyle={styles.menuContent}
-              anchor={(
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchorPosition="bottom"
+            contentStyle={styles.menuContent}
+            anchor={(
+              isAuthenticated ? (
                 <Pressable style={styles.accountButton} onPress={() => setMenuVisible(true)}>
                   {userPhoto ? (
                     <Avatar.Image size={36} source={{ uri: userPhoto }} />
@@ -51,30 +51,46 @@ export function DesktopHeader() {
                   )}
                   <Text style={styles.accountName} numberOfLines={1}>{accountName}</Text>
                 </Pressable>
-              )}
-            >
-              <Menu.Item
-                onPress={() => { setMenuVisible(false); router.push('/edit-profile'); }}
-                title="Edit Profile"
-                leadingIcon="account-edit"
-              />
-              <Menu.Item
-                onPress={() => { setMenuVisible(false); router.push('/(tabs)/settings'); }}
-                title="Settings"
-                leadingIcon="cog"
-              />
-              <Menu.Item
-                onPress={() => { setMenuVisible(false); signOutUser(); }}
-                title="Log out"
-                leadingIcon="logout"
-              />
-            </Menu>
-          ) : (
-            <View style={styles.accountButton}>
-              <Avatar.Icon size={36} icon="account" />
-              <Text style={styles.accountName} numberOfLines={1}>Account</Text>
-            </View>
-          )}
+              ) : (
+                <Pressable style={styles.gearButton} onPress={() => setMenuVisible(true)}>
+                  <MaterialCommunityIcons name="cog-outline" size={22} color={colors.gray[900]} />
+                </Pressable>
+              )
+            )}
+          >
+            {isAuthenticated ? (
+              <>
+                <Menu.Item
+                  onPress={() => { setMenuVisible(false); router.push('/edit-profile'); }}
+                  title="Edit Profile"
+                  leadingIcon="account-edit"
+                />
+                <Menu.Item
+                  onPress={() => { setMenuVisible(false); router.push('/(tabs)/settings'); }}
+                  title="Settings"
+                  leadingIcon="cog"
+                />
+                <Menu.Item
+                  onPress={() => { setMenuVisible(false); signOutUser(); }}
+                  title="Log out"
+                  leadingIcon="logout"
+                />
+              </>
+            ) : (
+              <>
+                <Menu.Item
+                  onPress={() => { setMenuVisible(false); router.push('/(tabs)/settings'); }}
+                  title="Settings"
+                  leadingIcon="cog"
+                />
+                <Menu.Item
+                  onPress={() => { setMenuVisible(false); signInWithGoogle(); }}
+                  title="Login with Google"
+                  leadingIcon="google"
+                />
+              </>
+            )}
+          </Menu>
         </View>
       </View>
     </View>
@@ -135,6 +151,14 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   menuContent: {
+    backgroundColor: colors.white,
+  },
+  gearButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
     backgroundColor: colors.white,
   },
   uploadButton: {

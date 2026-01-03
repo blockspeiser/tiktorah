@@ -137,11 +137,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.gray[900],
     marginTop: 28,
-    marginBottom: 6,
+    marginBottom: 0,
   },
   meta: {
     fontSize: 14,
     color: colors.gray[500],
-    marginBottom: 12,
+    marginBottom: 0,
   },
 });

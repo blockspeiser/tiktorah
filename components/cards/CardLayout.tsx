@@ -22,7 +22,7 @@ function countGaps(hasHeader: boolean, hasDescription: boolean, hasExtra: boolea
 
 export function CardLayout({
   cardHeight,
-  gap = 16,
+  gap = 8,
   minExtraHeight = 140,
   header,
   description,

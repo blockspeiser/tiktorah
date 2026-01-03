@@ -267,13 +267,14 @@ export default function UploadScreen() {
   const isReady = !authLoading && !profileLoading;
   const showUpload = isAuthenticated && profileExists;
   const isWide = screenWidth >= 900;
+  const showLogin = isReady && !isAuthenticated;
 
   return (
     <View style={[styles.screen, isMobileView && styles.screenMobile]}>
       <DesktopHeader />
       <ScrollView contentContainerStyle={[styles.container, isMobileView && styles.containerMobile, { paddingBottom: mobileNavHeight }]}>
       <View style={styles.content}>
-        <Text style={[styles.pageTitle, styles.maxWidth]}>Upload a Torah Meme</Text>
+        <Text style={[styles.pageTitle, styles.maxWidth, showLogin && styles.pageTitleCentered]}>Upload a Torah Meme</Text>
         <View style={[styles.card, styles.maxWidth, isMobileView && styles.cardMobile]}>
         {!isReady && (
           <View style={styles.center}>
@@ -285,9 +286,9 @@ export default function UploadScreen() {
           <Text style={styles.error}>{profileLoadError}</Text>
         )}
 
-        {isReady && !isAuthenticated && (
-          <View style={styles.section}>
-            <Text style={styles.body}>Sign in to upload your memes and manage your profile.</Text>
+        {showLogin && (
+          <View style={[styles.section, styles.sectionCentered]}>
+            <Text style={[styles.body, styles.centerText]}>Sign in to upload your memes and manage your profile.</Text>
             {authError && <Text style={styles.error}>{authError}</Text>}
             <Pressable style={styles.googleButton} onPress={handleSignIn}>
               <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
@@ -468,6 +469,9 @@ const styles = StyleSheet.create({
     marginTop: 48,
     marginBottom: 16,
   },
+  pageTitleCentered: {
+    textAlign: 'center',
+  },
   heading: {
     fontSize: 22,
     fontWeight: '600',
@@ -548,6 +552,12 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 12,
+  },
+  sectionCentered: {
+    alignItems: 'center',
+  },
+  centerText: {
+    textAlign: 'center',
   },
   googleButton: {
     flexDirection: 'row',
