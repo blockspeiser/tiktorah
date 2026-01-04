@@ -1,6 +1,6 @@
 import { SefariaCategory, SefariaTopic } from '@/services/sefariaData';
 
-export type CardType = 'genre' | 'text' | 'author' | 'topic';
+export type CardType = 'genre' | 'text' | 'author' | 'topic' | 'meme';
 
 export interface BaseCard {
   id: string;

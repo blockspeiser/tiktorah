@@ -286,6 +286,7 @@ export default function FeedScreen() {
           // Set cards even if we got fewer than requested
           if (initialCards.length > 0) {
             setCards(initialCards);
+            setLoadError(null); // Clear any error from previous effect runs
           } else {
             console.warn('[Feed] No initial cards built, retrying with more attempts...');
             // Retry with more attempts
@@ -293,6 +294,7 @@ export default function FeedScreen() {
             if (!isCancelled) {
               if (fallbackCards.length > 0) {
                 setCards(fallbackCards);
+                setLoadError(null); // Clear any error from previous effect runs
               } else {
                 console.error('[Feed] All card building attempts failed');
                 setLoadError('Unable to load content. Please refresh the page.');
@@ -387,7 +389,10 @@ export default function FeedScreen() {
   const isReady = splashMinTimeElapsed && (onlyMemes ? true : !isLoading) && (
     (onlyMemes && memeCards.length > 0) || (cardPool && cards.length > 0)
   );
-  const showError = loadError && splashMinTimeElapsed;
+  // Only show error if we have no content to display (handles race conditions where
+  // an earlier effect sets error but a later effect successfully builds cards)
+  const hasContent = cards.length > 0 || memeCards.length > 0;
+  const showError = loadError && splashMinTimeElapsed && !hasContent;
 
   useEffect(() => {
     if (!cardPool) return;
