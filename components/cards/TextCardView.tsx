@@ -8,7 +8,7 @@ import { CardLinks } from './CardLinks';
 import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
 import palette from '@/constants/palette';
-import { buildSefariaTextUrl } from '@/utils/links';
+import { buildSefariaRefUrl, buildSefariaTextUrl } from '@/utils/links';
 import { sanitizeText } from '@/services/sefariaText';
 import { TextBlock } from './TextBlock';
 
@@ -49,7 +49,7 @@ export function TextCardView({ card, onNextCard, cardHeight }: TextCardViewProps
 
   const handleExcerptPress = () => {
     if (!card.excerpt?.ref) return;
-    const url = `https://www.sefaria.org/${encodeURIComponent(card.excerpt.ref)}`;
+    const url = buildSefariaRefUrl(card.excerpt.ref);
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
@@ -81,8 +81,9 @@ export function TextCardView({ card, onNextCard, cardHeight }: TextCardViewProps
         cardHeight={cardHeight}
         header={renderHeader}
         description={renderDescription}
+        afterDescription={<CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />}
         extra={card.excerpt ? renderExcerpt : undefined}
-        footer={<CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />}
+        footer={undefined}
       />
     </CardWrapper>
   );
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginTop: 28,
+    marginTop: 12,
     marginBottom: 0,
   },
 });

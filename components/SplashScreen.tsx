@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, Animated, Easing } from 'react-native';
 import { Text } from 'react-native-paper';
 import { colors } from '@/constants/colors';
+import { LOGOTYPE_FONT } from '@/constants/fonts';
 
 interface SplashScreenProps {
   width?: number;
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontWeight: '700',
+    fontFamily: LOGOTYPE_FONT,
     color: colors.white,
     marginTop: 24,
     letterSpacing: 2,

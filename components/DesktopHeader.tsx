@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { colors } from '@/constants/colors';
+import { LOGOTYPE_FONT } from '@/constants/fonts';
 
 const COMPACT_WEB_WIDTH = 720;
 
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 22,
-    fontWeight: '600',
+    fontFamily: LOGOTYPE_FONT,
     color: colors.hotPink,
     letterSpacing: 0.5,
   },

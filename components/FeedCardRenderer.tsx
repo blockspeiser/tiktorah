@@ -3,6 +3,7 @@ import { FeedCard } from '@/types/cards';
 import {
   GenreCardView,
   TextCardView,
+  CommentaryCardView,
   AuthorCardView,
   TopicCardView,
   MemeCardView,
@@ -20,6 +21,8 @@ export function FeedCardRenderer({ card, onNextCard, cardHeight }: FeedCardRende
       return <GenreCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     case 'text':
       return <TextCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
+    case 'commentary':
+      return <CommentaryCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     case 'author':
       return <AuthorCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     case 'topic':

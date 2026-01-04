@@ -1,5 +1,5 @@
-import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { GenreCard } from '@/types/cards';
 import { CardWrapper } from './CardWrapper';
@@ -9,6 +9,8 @@ import { MarkdownText } from '@/components/MarkdownText';
 import { colors } from '@/constants/colors';
 import palette from '@/constants/palette';
 import { buildSefariaCategoryUrl } from '@/utils/links';
+import { TextBlock } from './TextBlock';
+import { sanitizeText } from '@/services/sefariaText';
 
 interface GenreCardViewProps {
   card: GenreCard;
@@ -23,6 +25,10 @@ export function GenreCardView({ card, onNextCard, cardHeight }: GenreCardViewPro
   const accentColor = palette.categoryColor(card.category);
   const categoryPath = [...card.parentCategories, card.category].filter(Boolean);
   const sefariaUrl = buildSefariaCategoryUrl(categoryPath);
+  const excerptText = useMemo(() => {
+    if (!card.excerpt?.text) return null;
+    return sanitizeText(card.excerpt.text);
+  }, [card.excerpt?.text]);
 
   const renderHeader = (
     <View>
@@ -42,17 +48,14 @@ export function GenreCardView({ card, onNextCard, cardHeight }: GenreCardViewPro
   );
 
   const renderExcerpt = (maxHeight?: number) => {
-    if (!card.excerpt) return null;
-    const lineHeight = 30;
-    const usableHeight = maxHeight ? Math.max(0, maxHeight - 30 - 8 - 28) : 0;
-    const lines = maxHeight ? Math.max(1, Math.floor(usableHeight / lineHeight)) : undefined;
+    if (!card.excerpt || !excerptText) return null;
     return (
-      <View style={[styles.excerptBox, { borderLeftColor: accentColor, maxHeight }]}>
-        <Text style={styles.excerptRef}>{card.excerpt.ref}</Text>
-        <Text style={styles.excerptText} numberOfLines={lines} ellipsizeMode="tail">
-          {card.excerpt.text}
-        </Text>
-      </View>
+      <TextBlock
+        reference={card.excerpt.ref}
+        text={excerptText}
+        accentColor={accentColor}
+        maxHeight={maxHeight}
+      />
     );
   };
 
@@ -68,18 +71,13 @@ export function GenreCardView({ card, onNextCard, cardHeight }: GenreCardViewPro
         cardHeight={cardHeight}
         header={renderHeader}
         description={renderDescription}
+        afterDescription={<CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />}
         extra={card.excerpt ? renderExcerpt : undefined}
-        footer={<CardLinks links={[{ label: 'Sefaria', url: sefariaUrl }]} />}
+        footer={undefined}
       />
     </CardWrapper>
   );
 }
-
-const serifFont = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'serif',
-});
 
 const styles = StyleSheet.create({
   breadcrumb: {
@@ -91,30 +89,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginTop: 28,
-    marginBottom: 0,
-  },
-  excerptBox: {
     marginTop: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderLeftWidth: 6,
-    borderColor: colors.gray[300],
-    borderRadius: 6,
-    backgroundColor: colors.white,
-    overflow: 'hidden',
-  },
-  excerptRef: {
-    fontSize: 20,
-    lineHeight: 30,
-    color: colors.gray[500],
-    marginBottom: 8,
-    fontFamily: serifFont,
-  },
-  excerptText: {
-    fontSize: 20,
-    lineHeight: 30,
-    color: colors.gray[700],
-    fontFamily: serifFont,
+    marginBottom: 0,
   },
 });

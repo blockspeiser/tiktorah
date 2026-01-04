@@ -19,9 +19,6 @@ interface TopicCardViewProps {
 }
 
 export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewProps) {
-  const sourceCount = card.numSources && card.numSources > 0
-    ? `${card.numSources.toLocaleString()} sources on Sefaria`
-    : null;
   const accentColor = useMemo(() => palette.randomColor(), [card.id]);
   const sefariaUrl = buildSefariaTopicUrl(card.slug);
   const links = [
@@ -38,11 +35,6 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
       <Text style={styles.title}>
         {card.title}
       </Text>
-      {sourceCount && (
-        <Text style={styles.meta}>
-          {sourceCount}
-        </Text>
-      )}
     </View>
   );
 
@@ -73,8 +65,9 @@ export function TopicCardView({ card, onNextCard, cardHeight }: TopicCardViewPro
         cardHeight={cardHeight}
         header={renderHeader}
         description={renderDescription}
+        afterDescription={<CardLinks links={links} />}
         extra={card.excerpt ? renderExcerpt : undefined}
-        footer={<CardLinks links={links} />}
+        footer={undefined}
       />
     </CardWrapper>
   );
@@ -85,12 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginTop: 28,
-    marginBottom: 0,
-  },
-  meta: {
-    fontSize: 14,
-    color: colors.gray[500],
+    marginTop: 12,
     marginBottom: 0,
   },
 });

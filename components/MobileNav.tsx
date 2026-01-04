@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 
@@ -19,23 +19,48 @@ export function useMobileNavHeight() {
 
 export function MobileNav() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && width < COMPACT_WEB_WIDTH;
   const isMobileView = !isWeb || isCompactWeb;
 
+  const activeTab = useMemo(() => {
+    if (pathname === '/upload') return 'upload';
+    if (pathname.startsWith('/(tabs)/settings') || pathname === '/settings') return 'settings';
+    return 'home';
+  }, [pathname]);
+
   if (!isMobileView) return null;
 
   return (
     <View style={[styles.nav, { height: MOBILE_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
-      <Pressable style={styles.navButton} onPress={() => router.push('/upload')}>
-        <MaterialCommunityIcons name="plus" size={24} color={colors.hotPink} />
+      <View
+        pointerEvents="none"
+        style={[
+          styles.activeIndicator,
+          activeTab === 'upload' && styles.activeIndicatorUpload,
+          activeTab === 'home' && styles.activeIndicatorHome,
+          activeTab === 'settings' && styles.activeIndicatorSettings,
+        ]}
+      />
+      <Pressable
+        style={styles.navButton}
+        onPress={() => router.push('/upload')}
+      >
+        <MaterialCommunityIcons name="plus-thick" size={24} color={colors.hotPink} />
       </Pressable>
-      <Pressable style={styles.navButton} onPress={() => router.push('/(tabs)')}>
+      <Pressable
+        style={styles.navButton}
+        onPress={() => router.push('/(tabs)')}
+      >
         <Image source={require('@/assets/splash-icon.png')} style={styles.navLogo} />
       </Pressable>
-      <Pressable style={styles.navButton} onPress={() => router.push('/(tabs)/settings')}>
+      <Pressable
+        style={styles.navButton}
+        onPress={() => router.push('/(tabs)/settings')}
+      >
         <MaterialCommunityIcons name="cog-outline" size={24} color={colors.hotPink} />
       </Pressable>
     </View>
@@ -65,5 +90,22 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '33.333%',
+    height: 3,
+    backgroundColor: colors.hotPink,
+  },
+  activeIndicatorUpload: {
+    left: '0%',
+  },
+  activeIndicatorHome: {
+    left: '33.333%',
+  },
+  activeIndicatorSettings: {
+    left: '66.666%',
   },
 });

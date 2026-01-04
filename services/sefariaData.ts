@@ -36,6 +36,8 @@ export type SefariaCategory = {
   heCategory?: string;
   enDesc?: string;
   heDesc?: string;
+  dependence?: string;
+  base_text_titles?: string[];
 };
 
 export type SefariaIndex = SefariaCategory[];
@@ -126,6 +128,27 @@ const topicsConfig: DataConfig<SefariaTopics> = {
   bundledData: bundledTopics as SefariaTopics,
 };
 
+let webStorageDisabled = false;
+
+function isMobileSafari(): boolean {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua);
+}
+
+function isWebSecureContext(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return Boolean(window.isSecureContext);
+}
+
+function simpleHash(input: string): string {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
+  }
+  return `simple-${(hash >>> 0).toString(16)}`;
+}
+
 /**
  * Get the local file path for storing data
  */
@@ -149,9 +172,9 @@ async function generateHash<T>(data: T): Promise<string> {
     return hash;
   } catch (error) {
     // Fallback for browsers where crypto fails (e.g., some Safari versions)
-    console.warn('Crypto hash failed, using length-based fallback:', error);
+    console.warn('Crypto hash failed, using simple fallback:', error);
     const jsonString = JSON.stringify(data);
-    return `fallback-${jsonString.length}-${Date.now()}`;
+    return simpleHash(jsonString);
   }
 }
 
@@ -183,6 +206,8 @@ async function storeHash(hashKey: string, hash: string): Promise<void> {
 async function loadFromLocalStorage<T>(config: DataConfig<T>): Promise<T | null> {
   try {
     if (Platform.OS === 'web') {
+      if (webStorageDisabled) return null;
+      console.log(`Loading ${config.fileName} from web storage...`);
       // Check if localStorage is available (Safari private mode blocks it)
       try {
         const testKey = '__storage_test__';
@@ -222,6 +247,8 @@ async function saveToLocalStorage<T>(config: DataConfig<T>, data: T): Promise<vo
     const jsonString = JSON.stringify(data);
 
     if (Platform.OS === 'web') {
+      if (webStorageDisabled) return;
+      console.log(`Saving ${config.fileName} to web storage...`);
       // Check if localStorage is available before trying to save
       try {
         const testKey = '__storage_test__';
@@ -237,6 +264,11 @@ async function saveToLocalStorage<T>(config: DataConfig<T>, data: T): Promise<vo
       await FileSystem.writeAsStringAsync(filePath, jsonString);
     }
   } catch (error) {
+    if (Platform.OS === 'web' && String(error).toLowerCase().includes('quota')) {
+      webStorageDisabled = true;
+      console.warn(`Web storage disabled after quota error saving ${config.fileName}`);
+      return;
+    }
     console.warn(`Failed to save ${config.fileName} to local storage:`, error);
   }
 }
@@ -283,6 +315,21 @@ async function checkForDataUpdates<T>(
 ): Promise<boolean> {
   try {
     console.log(`Checking for ${config.fileName} updates...`);
+
+    if (Platform.OS === 'web') {
+      if (!isWebSecureContext()) {
+        console.log(`Skipping ${config.fileName} updates on insecure context`);
+        return false;
+      }
+      if (isMobileSafari()) {
+        console.log(`Skipping ${config.fileName} updates on Mobile Safari`);
+        return false;
+      }
+      if (webStorageDisabled) {
+        console.log(`Skipping ${config.fileName} updates (web storage disabled)`);
+        return false;
+      }
+    }
 
     const freshData = await fetchFromApi<T>(config.apiUrl);
 

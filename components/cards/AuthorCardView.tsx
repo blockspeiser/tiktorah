@@ -113,7 +113,8 @@ export function AuthorCardView({ card, onNextCard, cardHeight }: AuthorCardViewP
         cardHeight={cardHeight}
         header={renderHeader}
         description={renderDescription}
-        footer={<CardLinks links={links} />}
+        afterDescription={<CardLinks links={links} />}
+        footer={undefined}
       />
     </CardWrapper>
   );
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.gray[900],
-    marginTop: 28,
+    marginTop: 12,
     marginBottom: 0,
   },
   meta: {

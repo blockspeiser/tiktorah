@@ -15,17 +15,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMyMemes } from '@/hooks/useMyMemes';
 import { useProfile } from '@/hooks/useProfile';
 import { useFeedPreferences } from '@/hooks/useFeedPreferences';
-import { buildCardPool, getRandomCard, CardPool } from '@/services/cardGenerator';
-import { FeedCard, TextCard, TopicCard, GenreCard, MemeFeedCard } from '@/types/cards';
+import { buildCardPool } from '@/services/cardGenerator';
+import { FeedCard, MemeFeedCard } from '@/types/cards';
 import { FeedCardRenderer } from '@/components/FeedCardRenderer';
-import { SwipeHint } from '@/components/SwipeHint';
 import { DataModal } from '@/components/DataModal';
 import { SplashScreen } from '@/components/SplashScreen';
 import { DesktopHeader } from '@/components/DesktopHeader';
 import { colors } from '@/constants/colors';
-import { fetchTextExcerpt, fetchTopicExcerpt, TextExcerpt } from '@/services/sefariaText';
 import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
 import { getMemeDownloadUrl } from '@/lib/storage';
+import { buildCardSlug } from '@/utils/cardSlug';
+import { FeedEngine } from '@/services/feedEngine';
 
 const SPLASH_MIN_DURATION = 1000; // 1 second minimum
 
@@ -33,9 +33,7 @@ const SPLASH_MIN_DURATION = 1000; // 1 second minimum
 const PHONE_ASPECT_RATIO = 9 / 16;
 const DESKTOP_HEADER_HEIGHT = 72;
 const DESKTOP_GAP = 40;
-const INITIAL_CARD_COUNT = 5;
-const PRELOAD_QUEUE_COUNT = 5;
-const MIN_DESCRIPTION_WORDS = 15;
+const QUEUE_SIZE = 5;
 
 export default function FeedScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -45,20 +43,25 @@ export default function FeedScreen() {
   const { memes, loading: memesLoading } = useMyMemes(user?.uid);
   const { preferences } = useFeedPreferences();
   const mobileNavHeight = useMobileNavHeight();
-  const [cardPool, setCardPool] = useState<CardPool | null>(null);
+
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showDataModal, setShowDataModal] = useState(false);
   const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [memeCards, setMemeCards] = useState<MemeFeedCard[]>([]);
+  const [isBuildingQueue, setIsBuildingQueue] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
   const flatListRef = useRef<FlatList>(null);
-  const preloadedRef = useRef<FeedCard[]>([]);
-  const cardPoolRef = useRef<CardPool | null>(null);
-  const textExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
-  const topicExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
-  const genreExcerptCacheRef = useRef<Map<string, TextExcerpt>>(new Map());
-  const isLoadingMoreRef = useRef(false);
+  const engineRef = useRef<FeedEngine | null>(null);
+  const buildIdRef = useRef(0);
+  const cardsRef = useRef<FeedCard[]>([]);
+  const currentIndexRef = useRef(0);
+  const prefsKeyRef = useRef<string | null>(null);
+  const isUserScrollingRef = useRef(false);
+  const isProgrammaticScrollRef = useRef(false);
+
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && (screenWidth < 720 || screenHeight < 720);
   const showHeader = isWeb && !isCompactWeb;
@@ -70,8 +73,20 @@ export default function FeedScreen() {
   const onlyMemes = preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
   const noContentSelected = !preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
 
-  const countWords = useCallback((value: string) => {
-    return value.trim().split(/\s+/).filter(Boolean).length;
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSplashMinTimeElapsed(true);
+    }, SPLASH_MIN_DURATION);
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -107,9 +122,9 @@ export default function FeedScreen() {
           memeLink: meme.data.memeLink ?? null,
         };
       })
-    ).then((cards) => {
+    ).then((nextCards) => {
       if (!active) return;
-      setMemeCards(cards.filter((card) => card.imageUrl || card.citationText || card.caption));
+      setMemeCards(nextCards.filter((card) => card.imageUrl || card.citationText || card.caption));
     });
 
     return () => {
@@ -117,292 +132,51 @@ export default function FeedScreen() {
     };
   }, [memes, preferences.memes, profile, user]);
 
-  const isCardTypeEnabled = useCallback((card: FeedCard) => {
-    if (card.type === 'text') return preferences.texts;
-    if (card.type === 'genre') return preferences.categories;
-    if (card.type === 'topic') return preferences.topics;
-    if (card.type === 'author') return preferences.topics;
-    if (card.type === 'meme') return preferences.memes;
-    return true;
-  }, [preferences]);
-
-  const shouldSkipCard = useCallback((card: FeedCard) => {
-    if (card.type === 'meme') {
-      const memeCard = card as MemeFeedCard;
-      return !memeCard.imageUrl && !memeCard.citationText && !memeCard.caption;
-    }
-    if (!isCardTypeEnabled(card)) return true;
-    const isShortDescription = countWords(card.description) < MIN_DESCRIPTION_WORDS;
-    if (!isShortDescription) return false;
-
-    if (card.type === 'text') {
-      return !card.excerpt;
-    }
-    if (card.type === 'author') {
-      return !card.image;
-    }
-    if (card.type === 'genre') {
-      return !card.excerpt;
-    }
-    if (card.type === 'topic') {
-      return !card.excerpt;
-    }
-
-    return true;
-  }, [countWords, isCardTypeEnabled]);
-
-  const hydrateCard = useCallback(async (card: FeedCard): Promise<FeedCard | null> => {
+  const buildQueue = useCallback(async (
+    targetSize: number,
+    options?: { allowReset?: boolean; reason?: string }
+  ) => {
+    const engine = engineRef.current;
+    if (!engine) return [];
+    setIsBuildingQueue(true);
     try {
-      if (card.type === 'meme') {
-        return shouldSkipCard(card) ? null : card;
+      const queue = await engine.ensureQueue(targetSize);
+      setCards((prev) => {
+        if (options?.allowReset) {
+          return [...queue];
+        }
+        if (queue.length <= prev.length) {
+          return prev;
+        }
+        for (let i = 0; i < prev.length; i += 1) {
+          if (prev[i].id !== queue[i].id) {
+            console.warn('[Feed] Queue prefix mismatch, ignoring update', {
+              reason: options?.reason,
+              prevId: prev[i]?.id,
+              nextId: queue[i]?.id,
+            });
+            return prev;
+          }
+        }
+        return [...queue];
+      });
+      if (queue.length > 0) {
+        setHasLoadedOnce(true);
       }
-      // Handle text cards - fetch text excerpt
-      if (card.type === 'text') {
-        const cached = textExcerptCacheRef.current.get(card.title);
-        if (cached) {
-          const hydrated = { ...card, excerpt: cached } as TextCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        const excerpt = await fetchTextExcerpt(card.title);
-        if (excerpt) {
-          textExcerptCacheRef.current.set(card.title, excerpt);
-          const hydrated = { ...card, excerpt } as TextCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        return null;
-      }
-
-      // Handle topic cards - fetch topic excerpt
-      if (card.type === 'topic') {
-        const cached = topicExcerptCacheRef.current.get(card.slug);
-        if (cached) {
-          const hydrated = { ...card, excerpt: cached } as TopicCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        const excerpt = await fetchTopicExcerpt(card.slug);
-        if (excerpt) {
-          topicExcerptCacheRef.current.set(card.slug, excerpt);
-          const hydrated = { ...card, excerpt } as TopicCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        // Topics without excerpts are still valid if they pass other checks
-        return shouldSkipCard(card) ? null : card;
-      }
-
-      // Handle genre cards - fetch excerpt from first book in category
-      if (card.type === 'genre' && card.firstBookTitle) {
-        const cacheKey = card.firstBookTitle;
-        const cached = genreExcerptCacheRef.current.get(cacheKey);
-        if (cached) {
-          const hydrated = { ...card, excerpt: cached } as GenreCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        const excerpt = await fetchTextExcerpt(card.firstBookTitle);
-        if (excerpt) {
-          genreExcerptCacheRef.current.set(cacheKey, excerpt);
-          const hydrated = { ...card, excerpt } as GenreCard;
-          return shouldSkipCard(hydrated) ? null : hydrated;
-        }
-
-        // Genres without excerpts are still valid if they pass other checks
-        return shouldSkipCard(card) ? null : card;
-      }
-
-      // Other card types (author, genre without firstBookTitle)
-      return shouldSkipCard(card) ? null : card;
-    } catch (error) {
-      console.warn(`[Feed] Error hydrating ${card.type} card:`, error);
-      // On error, skip this card but don't crash the feed
-      return null;
+      return queue;
+    } finally {
+      setIsBuildingQueue(false);
     }
-  }, [shouldSkipCard]);
-
-  const buildCardBatch = useCallback(async (count: number): Promise<FeedCard[]> => {
-    const pool = cardPoolRef.current;
-    if (!pool && !memeCards.length) return [];
-
-    if (onlyMemes) {
-      if (memeCards.length === 0) return [];
-      const shuffled = [...memeCards].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count);
-    }
-    if (!pool) {
-      const shuffled = [...memeCards].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count);
-    }
-
-    const batch: FeedCard[] = [];
-    const maxAttempts = count * 8;
-    let attempts = 0;
-
-    while (batch.length < count && attempts < maxAttempts) {
-      attempts += 1;
-      const shouldUseMeme = preferences.memes && memeCards.length > 0 && Math.random() < 0.2;
-      const card = shouldUseMeme
-        ? memeCards[Math.floor(Math.random() * memeCards.length)]
-        : getRandomCard(pool);
-      if (!card) continue;
-
-      const hydrated = await hydrateCard(card);
-      if (hydrated) {
-        batch.push(hydrated);
-      }
-    }
-    return batch;
-  }, [hydrateCard, memeCards, preferences]);
-
-  // Minimum splash screen duration timer
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSplashMinTimeElapsed(true);
-    }, SPLASH_MIN_DURATION);
-
-    return () => clearTimeout(timer);
   }, []);
 
-  // Build card pool when data is available and preload text excerpts
   useEffect(() => {
-    let isCancelled = false;
-
-    if (index && topics) {
-      const pool = buildCardPool(index, topics);
-      cardPoolRef.current = pool;
-      setCardPool(pool);
-
-      (async () => {
-        try {
-          console.log('[Feed] Building initial cards...');
-          setLoadError(null);
-          const initialCards = await buildCardBatch(INITIAL_CARD_COUNT);
-          console.log(`[Feed] Built ${initialCards.length} initial cards`);
-
-          if (isCancelled) return;
-
-          // Set cards even if we got fewer than requested
-          if (initialCards.length > 0) {
-            setCards(initialCards);
-            setLoadError(null); // Clear any error from previous effect runs
-          } else {
-            console.warn('[Feed] No initial cards built, retrying with more attempts...');
-            // Retry with more attempts
-            const fallbackCards = await buildCardBatch(INITIAL_CARD_COUNT);
-            if (!isCancelled) {
-              if (fallbackCards.length > 0) {
-                setCards(fallbackCards);
-                setLoadError(null); // Clear any error from previous effect runs
-              } else {
-                console.error('[Feed] All card building attempts failed');
-                setLoadError('Unable to load content. Please refresh the page.');
-              }
-            }
-          }
-
-          const preloadQueue = await buildCardBatch(PRELOAD_QUEUE_COUNT);
-          if (!isCancelled) {
-            preloadedRef.current = preloadQueue;
-          }
-        } catch (error) {
-          console.error('[Feed] Error building cards:', error);
-          if (!isCancelled) {
-            setLoadError('Something went wrong. Please refresh the page.');
-          }
-        }
-      })();
-    }
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [index, topics, buildCardBatch]);
-
-  // Load more cards when nearing the end
-  const loadMoreCards = useCallback(async () => {
-    if (isLoadingMoreRef.current) return;
-    if (!cardPoolRef.current) return;
-
-    const queued = preloadedRef.current;
-    if (queued.length === 0) return;
-
-    isLoadingMoreRef.current = true;
-    setCards(prev => [...prev, ...queued]);
-
-    const newQueue = await buildCardBatch(PRELOAD_QUEUE_COUNT);
-    preloadedRef.current = newQueue;
-    isLoadingMoreRef.current = false;
-  }, [buildCardBatch]);
-
-  // Handle viewable items change
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        setCurrentIndex(viewableItems[0].index);
-      }
-    },
-    []
-  );
-
-  const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
-  };
-
-  // Handle next card (for web button)
-  const handleNextCard = useCallback(() => {
-    if (currentIndex < cards.length - 1) {
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex + 1,
-        animated: true,
-      });
-    } else {
-      loadMoreCards().then(() => {
-        setTimeout(() => {
-          flatListRef.current?.scrollToIndex({
-            index: currentIndex + 1,
-            animated: true,
-          });
-        }, 100);
-      });
-    }
-  }, [currentIndex, cards.length, loadMoreCards]);
-
-  // Render each card
-  const renderCard = useCallback(
-    ({ item, index: itemIndex }: { item: FeedCard; index: number }) => (
-      <View style={[styles.cardContainer, { height: phoneHeight, width: phoneWidth }]}>
-        <FeedCardRenderer
-          card={item}
-          onNextCard={isWeb && !isCompactWeb ? handleNextCard : undefined}
-          cardHeight={phoneHeight}
-        />
-        {/* Show swipe hint only on first card and only on mobile */}
-        {itemIndex === 0 && isMobileView && <SwipeHint />}
-      </View>
-    ),
-    [handleNextCard, isCompactWeb, isMobileView, isWeb, phoneHeight, phoneWidth]
-  );
-
-  // Show splash screen until both: data is loaded AND minimum time has elapsed
-  const isReady = splashMinTimeElapsed && (onlyMemes ? true : !isLoading) && (
-    (onlyMemes && memeCards.length > 0) || (cardPool && cards.length > 0)
-  );
-  // Only show error if we have no content to display (handles race conditions where
-  // an earlier effect sets error but a later effect successfully builds cards)
-  const hasContent = cards.length > 0 || memeCards.length > 0;
-  const showError = loadError && splashMinTimeElapsed && !hasContent;
-
-  useEffect(() => {
-    if (!cardPool) return;
-    setCards((prev) => prev.filter(isCardTypeEnabled));
-    preloadedRef.current = preloadedRef.current.filter(isCardTypeEnabled);
-    if (currentIndex >= preloadedRef.current.length && currentIndex >= cards.length - 1) {
-      setCurrentIndex(0);
-      flatListRef.current?.scrollToIndex({ index: 0, animated: false });
-    }
-  }, [preferences, isCardTypeEnabled, cardPool, currentIndex, cards.length]);
+    if (!isWeb || isMobileView) return;
+    const card = cards[currentIndex];
+    if (!card) return;
+    const slug = buildCardSlug(card);
+    if (typeof window === 'undefined') return;
+    window.history.replaceState({}, '', `/card/${slug}`);
+  }, [cards, currentIndex, isWeb, isMobileView]);
 
   useEffect(() => {
     if (noContentSelected) {
@@ -410,25 +184,143 @@ export default function FeedScreen() {
       setCards([]);
       return;
     }
-    if (loadError === 'Select at least one content type in Settings.') {
-      setLoadError(null);
-    }
-  }, [noContentSelected, loadError]);
 
-  useEffect(() => {
-    if (!onlyMemes) return;
-    if (memesLoading) return;
-    if (memeCards.length === 0) {
+    if (!index || !topics) return;
+
+    if (onlyMemes && memeCards.length === 0 && !memesLoading) {
       setLoadError('No memes available yet.');
       setCards([]);
       return;
     }
-    setLoadError(null);
-    setCards(memeCards);
-    preloadedRef.current = [];
-  }, [onlyMemes, memeCards, memesLoading]);
 
-  // Show error state if loading failed
+    const pool = buildCardPool(index, topics);
+    console.log('[Feed] Card pool size', {
+      texts: pool.texts.length,
+      categories: pool.genres.length,
+      topics: pool.topics.length,
+      authors: pool.authors.length,
+    });
+
+    const prefsKey = JSON.stringify(preferences);
+    const prefsChanged = prefsKeyRef.current !== prefsKey;
+    if (prefsChanged) {
+      prefsKeyRef.current = prefsKey;
+    }
+
+    const buildId = buildIdRef.current + 1;
+    buildIdRef.current = buildId;
+
+    if (!engineRef.current || prefsChanged) {
+      console.log('[Feed] Resetting engine', {
+        reason: prefsChanged ? 'prefs-change' : 'init',
+      });
+      const engine = new FeedEngine(preferences);
+      engine.setPool(pool);
+      engine.setMemes(memeCards);
+      engine.resetCaches();
+      engine.clearQueue();
+      engineRef.current = engine;
+
+      setLoadError(null);
+      setCards([]);
+      setCurrentIndex(0);
+
+      buildQueue(QUEUE_SIZE, { allowReset: true, reason: prefsChanged ? 'prefs-change' : 'init' })
+        .then((queue) => {
+          if (buildIdRef.current !== buildId) return;
+          if (queue.length === 0) {
+            setLoadError('Unable to load content. Please try again.');
+          }
+        });
+      return;
+    }
+
+    engineRef.current.setPool(pool);
+    engineRef.current.setMemes(memeCards);
+    setLoadError(null);
+    buildQueue(QUEUE_SIZE, { reason: 'pool-update' });
+  }, [index, topics, preferences, memeCards, memesLoading, noContentSelected, onlyMemes, buildQueue]);
+
+  const ensureAhead = useCallback(async (indexValue: number) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const target = indexValue + QUEUE_SIZE;
+    if (cards.length >= target || engine.isBuilding()) return;
+    await buildQueue(target, { reason: 'ensure-ahead' });
+  }, [cards.length, buildQueue]);
+
+  const ensureAheadRef = useRef(ensureAhead);
+  useEffect(() => {
+    ensureAheadRef.current = ensureAhead;
+  }, [ensureAhead]);
+
+  const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      const nextIndex = viewableItems[0].index;
+      const allowUpdate = isUserScrollingRef.current || isProgrammaticScrollRef.current;
+      if (!allowUpdate && nextIndex !== currentIndexRef.current) {
+        console.warn('[Feed] Ignoring viewable change without user scroll', {
+          nextIndex,
+          currentIndex: currentIndexRef.current,
+          userScrolling: isUserScrollingRef.current,
+          programmatic: isProgrammaticScrollRef.current,
+          cards: cardsRef.current.length,
+        });
+        return;
+      }
+      if (allowUpdate && nextIndex !== currentIndexRef.current) {
+        setCurrentIndex(nextIndex);
+        ensureAheadRef.current(nextIndex);
+      }
+    }
+  });
+
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50,
+  };
+
+  const handleNextCard = useCallback(() => {
+    if (currentIndex < cards.length - 1) {
+      isProgrammaticScrollRef.current = true;
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex + 1,
+        animated: true,
+      });
+    }
+  }, [currentIndex, cards.length]);
+
+  const renderCard = useCallback(
+    ({ item }: { item: FeedCard; index: number }) => (
+      <View style={[styles.cardContainer, { height: phoneHeight, width: phoneWidth }]}> 
+        <FeedCardRenderer
+          card={item}
+          onNextCard={showHeader ? handleNextCard : undefined}
+          cardHeight={phoneHeight}
+        />
+      </View>
+    ),
+    [handleNextCard, phoneHeight, phoneWidth, showHeader]
+  );
+
+  const hasCards = cards.length > 0;
+  const hasMemeCards = memeCards.length > 0;
+  const isReady = splashMinTimeElapsed && (hasCards || (onlyMemes && hasMemeCards));
+  const hasContent = cards.length > 0 || memeCards.length > 0;
+  const showError = loadError && splashMinTimeElapsed && !hasContent;
+
+  useEffect(() => {
+    console.log('[Feed] State', {
+      isLoading,
+      splashMinTimeElapsed,
+      cards: cards.length,
+      memes: memeCards.length,
+      loadError,
+      onlyMemes,
+      isReady,
+      isBuildingQueue,
+    });
+  }, [isLoading, splashMinTimeElapsed, cards.length, memeCards.length, loadError, onlyMemes, isReady, isBuildingQueue]);
+
   if (showError) {
     const errorContent = (
       <View style={styles.errorContainer}>
@@ -442,7 +334,7 @@ export default function FeedScreen() {
         <View style={styles.webWrapper}>
           <DesktopHeader />
           <View style={styles.webContent}>
-            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
+            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}> 
               {errorContent}
             </View>
           </View>
@@ -453,20 +345,32 @@ export default function FeedScreen() {
   }
 
   if (!isReady) {
-    // On desktop, show splash within the mock phone container with header
     if (showHeader) {
       return (
         <View style={styles.webWrapper}>
           <DesktopHeader />
           <View style={styles.webContent}>
-            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
-              <SplashScreen />
+            <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}> 
+              {hasLoadedOnce ? (
+                <View style={styles.centered}>
+                  <Text style={styles.loadingText}>Loading cards...</Text>
+                </View>
+              ) : (
+                <SplashScreen />
+              )}
             </View>
           </View>
         </View>
       );
     }
-    return <SplashScreen />;
+
+    return hasLoadedOnce ? (
+      <View style={styles.centered}>
+        <Text style={styles.loadingText}>Loading cards...</Text>
+      </View>
+    ) : (
+      <SplashScreen />
+    );
   }
 
   const feedContent = (
@@ -474,15 +378,26 @@ export default function FeedScreen() {
       ref={flatListRef}
       data={cards}
       renderItem={renderCard}
-      keyExtractor={(item, idx) => `${item.id}-${idx}`}
+      keyExtractor={(item) => item.id}
       pagingEnabled
       showsVerticalScrollIndicator={false}
       snapToInterval={phoneHeight}
       snapToAlignment="start"
       decelerationRate="fast"
-      onEndReached={loadMoreCards}
-      onEndReachedThreshold={0.5}
-      onViewableItemsChanged={onViewableItemsChanged}
+      onScrollBeginDrag={() => {
+        isUserScrollingRef.current = true;
+      }}
+      onScrollEndDrag={() => {
+        isUserScrollingRef.current = false;
+      }}
+      onMomentumScrollBegin={() => {
+        isUserScrollingRef.current = true;
+      }}
+      onMomentumScrollEnd={() => {
+        isUserScrollingRef.current = false;
+        isProgrammaticScrollRef.current = false;
+      }}
+      onViewableItemsChanged={onViewableItemsChangedRef.current}
       viewabilityConfig={viewabilityConfig}
       getItemLayout={(_, idx) => ({
         length: phoneHeight,
@@ -496,20 +411,17 @@ export default function FeedScreen() {
     />
   );
 
-  // Get current card for the data modal
   const currentCard = cards[currentIndex] ?? null;
 
-  // On web, wrap in mock phone view
   if (showHeader) {
     return (
       <View style={styles.webWrapper}>
         <DesktopHeader />
         <View style={styles.webContent}>
-          <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}>
+          <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}> 
             {feedContent}
           </View>
 
-          {/* See Data button - positioned outside mock phone */}
           <Pressable
             style={styles.seeDataButton}
             onPress={() => setShowDataModal(true)}
@@ -517,7 +429,6 @@ export default function FeedScreen() {
             <MaterialCommunityIcons name="code-json" size={20} color={colors.hotPink} />
           </Pressable>
 
-          {/* Data Modal */}
           <DataModal
             visible={showDataModal}
             onClose={() => setShowDataModal(false)}
@@ -528,9 +439,8 @@ export default function FeedScreen() {
     );
   }
 
-  // On mobile, full screen
   return (
-    <View style={[styles.mobileContainer, { paddingBottom: mobileNavHeight }]}>
+    <View style={[styles.mobileContainer, { paddingBottom: mobileNavHeight }]}> 
       {feedContent}
       <MobileNav />
     </View>
@@ -590,5 +500,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.gray[600],
     textAlign: 'center',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.gray[600],
   },
 });

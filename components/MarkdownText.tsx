@@ -76,7 +76,7 @@ export function MarkdownText({ children, maxHeight }: MarkdownTextProps) {
             },
             paragraph: {
               marginTop: 0,
-              marginBottom: 12,
+              marginBottom: 6,
             },
             link: {
               color: colors['sefaria-blue'],

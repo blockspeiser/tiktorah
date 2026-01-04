@@ -8,6 +8,10 @@ export function buildSefariaTextUrl(title: string): string {
   return `${SEFARIA_BASE_URL}/${toSefariaSlug(title)}`;
 }
 
+export function buildSefariaRefUrl(ref: string): string {
+  return `${SEFARIA_BASE_URL}/${encodeURIComponent(ref)}`;
+}
+
 export function buildSefariaCategoryUrl(categories: string[]): string {
   const path = categories.map(toSefariaSlug).join('/');
   return `${SEFARIA_BASE_URL}/texts/${path}`;

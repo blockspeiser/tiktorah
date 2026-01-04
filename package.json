@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --host lan",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
@@ -15,6 +15,10 @@
     "deploy": "./scripts/deploy.sh"
   },
   "dependencies": {
+    "@expo-google-fonts/cardo": "^0.4.1",
+    "@expo-google-fonts/eb-garamond": "^0.4.2",
+    "@expo-google-fonts/noto-sans": "^0.4.2",
+    "@expo-google-fonts/roboto": "^0.4.2",
     "@expo/vector-icons": "^14.0.4",
     "@firebase/auth": "^1.12.0",
     "@react-native-async-storage/async-storage": "2.2.0",

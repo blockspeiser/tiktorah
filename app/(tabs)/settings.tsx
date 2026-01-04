@@ -36,7 +36,7 @@ export default function SettingsScreen() {
             {isMobileView && <View style={styles.mobileSectionSpacer} />}
 
             <List.Section>
-              <List.Subheader style={isMobileView ? styles.sectionHeaderMobile : styles.sectionHeader}>Stories</List.Subheader>
+              <List.Subheader style={isMobileView ? styles.sectionHeaderMobile : styles.sectionHeader}>Cards</List.Subheader>
               {prefsLoading ? (
                 <View style={styles.centered}>
                   <ActivityIndicator />
@@ -72,8 +72,22 @@ export default function SettingsScreen() {
                   />
                   <Divider />
                   <List.Item
+                    title="Commentaries"
+                    description="Commentaries on texts like Rashi and Ramban"
+                    left={(props) => <List.Icon {...props} icon="comment-text-outline" />}
+                    right={() => (
+                      <View style={styles.checkboxContainer}>
+                        <Checkbox
+                          status={preferences.commentaries ? 'checked' : 'unchecked'}
+                          onPress={() => setPreference('commentaries', !preferences.commentaries)}
+                        />
+                      </View>
+                    )}
+                  />
+                  <Divider />
+                  <List.Item
                     title="Topics"
-                    description="Jewish topics like Talmudic figures and Holidays "
+                    description="Jewish topics like holidays, Torah portions, or Talmudic figures"
                     left={(props) => <List.Icon {...props} icon="tag-multiple" />}
                     right={() => (
                       <View style={styles.checkboxContainer}>
@@ -182,7 +196,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   pageTitleAligned: {
-    paddingLeft: 20,
+    paddingLeft: 0,
   },
   checkboxContainer: {
     transform: [{ scale: 1.3 }],
@@ -221,8 +235,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sefariaLogo: {
-    width: 560,
-    height: 168,
+    width: 280,
+    height: 84,
   },
   centered: {
     alignItems: 'center',

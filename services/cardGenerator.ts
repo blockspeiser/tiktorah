@@ -3,6 +3,7 @@ import {
   FeedCard,
   GenreCard,
   TextCard,
+  CommentaryCard,
   AuthorCard,
   AuthorImage,
   TopicCard,
@@ -102,6 +103,24 @@ function indexToTextCard(item: SefariaCategory, path: string[], description: str
   };
 }
 
+// Convert index item to CommentaryCard - only call if description is validated
+function indexToCommentaryCard(item: SefariaCategory, path: string[], description: string): CommentaryCard {
+  const categories = item.categories && item.categories.length > 0
+    ? item.categories
+    : path;
+
+  return {
+    id: `commentary-${item.title}`,
+    type: 'commentary',
+    title: item.title ?? 'Unknown Commentary',
+    description, // Already validated
+    categories,
+    heTitle: item.heTitle ?? '',
+    dependence: item.dependence ?? 'Commentary',
+    baseTextTitles: item.base_text_titles,
+  };
+}
+
 // Convert topic to AuthorCard - only call if description is validated
 function topicToAuthorCard(topic: SefariaTopic, description: string): AuthorCard {
   const generation = topic.properties?.generation?.value;
@@ -195,6 +214,7 @@ function topicToTopicCard(topic: SefariaTopic, description: string): TopicCard {
 export interface CardPool {
   genres: GenreCard[];
   texts: TextCard[];
+  commentaries: CommentaryCard[];
   authors: AuthorCard[];
   topics: TopicCard[];
 }
@@ -232,6 +252,7 @@ export function buildCardPool(index: SefariaIndex, topics: SefariaTopics): CardP
 
   const genres: GenreCard[] = [];
   const texts: TextCard[] = [];
+  const commentaries: CommentaryCard[] = [];
 
   for (const { type, item, path } of flattened) {
     if (type === 'genre') {
@@ -244,7 +265,12 @@ export function buildCardPool(index: SefariaIndex, topics: SefariaTopics): CardP
       // Texts: get first valid description from enDesc or enShortDesc
       const description = getValidDescription(item.enDesc, item.enShortDesc);
       if (description) {
-        texts.push(indexToTextCard(item, path, description));
+        // Check if this is a commentary (has dependence field)
+        if (item.dependence) {
+          commentaries.push(indexToCommentaryCard(item, path, description));
+        } else {
+          texts.push(indexToTextCard(item, path, description));
+        }
       }
     }
   }
@@ -271,6 +297,7 @@ export function buildCardPool(index: SefariaIndex, topics: SefariaTopics): CardP
   return {
     genres,
     texts,
+    commentaries,
     authors,
     topics: topicCards,
   };
@@ -290,6 +317,7 @@ export function getRandomCard(pool: CardPool): FeedCard | null {
   const allCards: FeedCard[] = [
     ...pool.genres,
     ...pool.texts,
+    ...pool.commentaries,
     ...pool.authors,
     ...pool.topics,
   ].filter(isValidCard); // Final safety filter
@@ -305,6 +333,7 @@ export function getRandomCards(pool: CardPool, count: number): FeedCard[] {
   const allCards: FeedCard[] = [
     ...pool.genres,
     ...pool.texts,
+    ...pool.commentaries,
     ...pool.authors,
     ...pool.topics,
   ].filter(isValidCard); // Final safety filter
@@ -319,8 +348,9 @@ export function getPoolStats(pool: CardPool) {
   return {
     genres: pool.genres.length,
     texts: pool.texts.length,
+    commentaries: pool.commentaries.length,
     authors: pool.authors.length,
     topics: pool.topics.length,
-    total: pool.genres.length + pool.texts.length + pool.authors.length + pool.topics.length,
+    total: pool.genres.length + pool.texts.length + pool.commentaries.length + pool.authors.length + pool.topics.length,
   };
 }

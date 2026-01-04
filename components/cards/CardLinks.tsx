@@ -30,14 +30,14 @@ export function CardLinks({ links }: CardLinksProps) {
       {links.map(link => (
         <Pressable
           key={link.label}
-          style={styles.linkButton}
+          style={styles.linkItem}
           onPress={() => openExternalLink(link.url)}
         >
           <Text style={styles.linkText}>{link.label}</Text>
           <MaterialCommunityIcons
             name="open-in-new"
             size={18}
-            color={colors.white}
+            color={colors['sefaria-blue']}
           />
         </Pressable>
       ))}
@@ -50,24 +50,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
     alignSelf: 'flex-start',
-    marginTop: 8,
+    marginTop: 0,
+    marginBottom: 8,
   },
-  linkButton: {
+  linkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    borderWidth: 0,
-    borderColor: 'transparent',
-    backgroundColor: colors['sefaria-blue'],
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(24, 52, 93, 0.12)',
   },
   linkText: {
-    fontSize: 15,
-    color: colors.white,
-    fontWeight: '500',
+    fontSize: 14,
+    color: colors['sefaria-blue'],
+    fontWeight: '600',
   },
 });

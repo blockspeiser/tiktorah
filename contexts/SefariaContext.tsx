@@ -58,6 +58,7 @@ export function SefariaProvider({ children }: SefariaProviderProps) {
 
     async function initializeData() {
       try {
+        console.log('[Sefaria] Initializing data load');
         // Load all data immediately (from local storage or bundled)
         const loadedData = await loadAllSefariaData();
 
@@ -66,6 +67,10 @@ export function SefariaProvider({ children }: SefariaProviderProps) {
         setIndex(loadedData.index);
         setTopics(loadedData.topics);
         setIsLoading(false);
+        console.log('[Sefaria] Data loaded', {
+          indexCount: loadedData.index.length,
+          topicsCount: loadedData.topics.length,
+        });
 
         // Determine data sources
         const info = await getDataInfo();
