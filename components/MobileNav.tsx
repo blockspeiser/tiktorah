@@ -35,7 +35,13 @@ export function MobileNav() {
   if (!isMobileView) return null;
 
   return (
-    <View style={[styles.nav, { height: MOBILE_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.nav,
+        { height: MOBILE_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom },
+        isCompactWeb && styles.navCompactWeb,
+      ]}
+    >
       <View
         pointerEvents="none"
         style={[
@@ -79,6 +85,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
+  },
+  navCompactWeb: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[300],
   },
   navButton: {
     flex: 1,

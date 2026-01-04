@@ -10,7 +10,7 @@ import { createMeme, updateMeme, deleteMemeDoc } from '@/lib/firestore';
 import { deleteMemeStorage, getMemeDownloadUrl, uploadUserMeme } from '@/lib/storage';
 import { useProfile } from '@/hooks/useProfile';
 import { useMyMemes } from '@/hooks/useMyMemes';
-import { MemeCard } from '@/components/memes/MemeCard';
+import { MemeCard } from '@/components/cards/MemeCard';
 import { colors } from '@/constants/colors';
 import { fetchCitationPreview, sanitizeText } from '@/services/sefariaText';
 import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';

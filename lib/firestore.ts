@@ -118,6 +118,25 @@ export function subscribeToMyMemes(
   );
 }
 
+export function subscribeToMemesFeed(
+  callback: (docs: { id: string; data: MemeDoc }[]) => void,
+  onError?: (error: Error) => void
+) {
+  const memesRef = collection(db.current, 'memes');
+  const q = query(memesRef, orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const results = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        data: docSnap.data() as MemeDoc,
+      }));
+      callback(results);
+    },
+    onError
+  );
+}
+
 export async function createComment(commentId: string, data: Omit<CommentDoc, 'createdAt' | 'modifiedAt'>) {
   const ref = doc(db.current, 'comments', commentId);
   return setDoc(ref, {
@@ -147,6 +166,25 @@ export function subscribeToMyComments(
 ) {
   const commentsRef = collection(db.current, 'comments');
   const q = query(commentsRef, where('ownerUid', '==', uid), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const results = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        data: docSnap.data() as CommentDoc,
+      }));
+      callback(results);
+    },
+    onError
+  );
+}
+
+export function subscribeToCommentsFeed(
+  callback: (docs: { id: string; data: CommentDoc }[]) => void,
+  onError?: (error: Error) => void
+) {
+  const commentsRef = collection(db.current, 'comments');
+  const q = query(commentsRef, orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snapshot) => {

@@ -5,4 +5,5 @@ export { CommentaryCardView } from './CommentaryCardView';
 export { AuthorCardView } from './AuthorCardView';
 export { TopicCardView } from './TopicCardView';
 export { MemeCardView } from './MemeCardView';
+export { MemeCard } from './MemeCard';
 export { CommentCardView } from './CommentCardView';

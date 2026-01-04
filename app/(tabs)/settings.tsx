@@ -6,6 +6,7 @@ import {
   Divider,
   ActivityIndicator,
 } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFeedPreferences } from '@/hooks/useFeedPreferences';
 import { MobileNav, useMobileNavHeight } from '@/components/MobileNav';
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: mobileNavHeight }]}>
           {isMobileView ? (
             <View style={[styles.maxWidth, styles.titleRow]}>
+              <MaterialCommunityIcons name="cog-outline" size={24} color={colors.gray[800]} />
               <Text style={styles.mobileHeader}>Settings</Text>
             </View>
           ) : (
@@ -339,13 +341,17 @@ const styles = StyleSheet.create({
   },
   mobileHeader: {
     fontSize: 24,
+    lineHeight: 26,
     fontWeight: '600',
     color: colors.gray[900],
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 48,
+    marginBottom: 6,
   },
   titleRow: {
-    alignItems: 'flex-start',
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 8,
     paddingLeft: 16,
   },
   pageTitleAligned: {

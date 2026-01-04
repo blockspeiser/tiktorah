@@ -113,8 +113,8 @@ export default function EditProfileScreen() {
           feedPreferences: DEFAULT_FEED_PREFERENCES,
         });
       }
-      // Navigate back to upload page after saving
-      router.replace('/upload');
+      // Navigate back to profile page after saving
+      router.replace('/profile');
     } catch (error) {
       setProfileError('Unable to save profile. Please try again.');
     } finally {

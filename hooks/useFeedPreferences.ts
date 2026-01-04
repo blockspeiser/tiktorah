@@ -8,20 +8,32 @@ import {
   loadLocalFeedPreferences,
   normalizeFeedPreferences,
   saveLocalFeedPreferences,
+  getCurrentFeedPreferences,
+  setCurrentFeedPreferences,
+  subscribeFeedPreferences,
 } from '@/lib/preferences';
 
 export function useFeedPreferences() {
   const { user, isAuthenticated } = useAuth();
   const { profile } = useProfile(user?.uid);
-  const [preferences, setPreferences] = useState<FeedPreferences>(DEFAULT_FEED_PREFERENCES);
+  const [preferences, setPreferences] = useState<FeedPreferences>(getCurrentFeedPreferences());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFeedPreferences((prefs) => {
+      setPreferences(prefs);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     if (isAuthenticated && profile) {
-      setPreferences(normalizeFeedPreferences(profile.feedPreferences));
+      const next = normalizeFeedPreferences(profile.feedPreferences);
+      setPreferences(next);
+      setCurrentFeedPreferences(next);
       setLoading(false);
       return () => {
         active = false;
@@ -33,12 +45,14 @@ export function useFeedPreferences() {
         .then((prefs) => {
           if (!active) return;
           setPreferences(prefs);
+          setCurrentFeedPreferences(prefs);
           setLoading(false);
         })
         .catch(() => {
           if (!active) return;
           setError('Failed to load preferences.');
           setPreferences(DEFAULT_FEED_PREFERENCES);
+          setCurrentFeedPreferences(DEFAULT_FEED_PREFERENCES);
           setLoading(false);
         });
       return () => {
@@ -54,6 +68,7 @@ export function useFeedPreferences() {
 
   const updatePreferences = useCallback(async (next: FeedPreferences) => {
     setPreferences(next);
+    setCurrentFeedPreferences(next);
     setError(null);
     if (isAuthenticated && user && profile) {
       await updateProfile(user.uid, { feedPreferences: next });

@@ -172,20 +172,24 @@ export function MemeCard({
           <View style={styles.headerActions}>
             {confirmDelete ? (
               <>
-                <Pressable style={styles.cancelButton} onPress={() => setConfirmDelete(false)} disabled={deleting}>
-                  <Text style={styles.cancelText}>Cancel</Text>
+                <Pressable style={styles.iconButton} onPress={() => setConfirmDelete(false)} disabled={deleting}>
+                  <MaterialCommunityIcons name="close" size={18} color={colors.gray[800]} />
                 </Pressable>
-                <Pressable style={styles.confirmDeleteButton} onPress={handleDelete} disabled={deleting}>
-                  {deleting ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.confirmDeleteText}>Delete</Text>}
+                <Pressable style={styles.iconButton} onPress={handleDelete} disabled={deleting}>
+                  {deleting ? <ActivityIndicator color={colors.gray[800]} size="small" /> : (
+                    <MaterialCommunityIcons name="trash-can" size={18} color={colors.gray[800]} />
+                  )}
                 </Pressable>
               </>
             ) : (
               <>
-                <Pressable style={styles.editButton} onPress={handleEditOpen}>
-                  <Text style={styles.editText}>Edit</Text>
+                <Pressable style={styles.iconButton} onPress={handleEditOpen}>
+                  <MaterialCommunityIcons name="pencil" size={18} color={colors.gray[800]} />
                 </Pressable>
-                <Pressable style={styles.outlineDeleteButton} onPress={() => setConfirmDelete(true)} disabled={deleting}>
-                  {deleting ? <ActivityIndicator color={colors.hotPink} size="small" /> : <Text style={styles.outlineDeleteText}>Delete</Text>}
+                <Pressable style={styles.iconButton} onPress={() => setConfirmDelete(true)} disabled={deleting}>
+                  {deleting ? <ActivityIndicator color={colors.gray[800]} size="small" /> : (
+                    <MaterialCommunityIcons name="trash-can" size={18} color={colors.gray[800]} />
+                  )}
                 </Pressable>
               </>
             )}
@@ -302,53 +306,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: colors.hotPink,
-  },
-  editText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  outlineDeleteButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  iconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1,
-    borderColor: colors.hotPink,
-    backgroundColor: 'transparent',
-  },
-  outlineDeleteText: {
-    color: colors.hotPink,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.gray[400],
-    backgroundColor: 'transparent',
-  },
-  cancelText: {
-    color: colors.gray[600],
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmDeleteButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#dc2626',
-  },
-  confirmDeleteText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
+    borderColor: colors.gray[300],
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
   },
   imageBase: {
     width: '100%',

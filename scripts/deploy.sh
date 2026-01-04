@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+# Load .env file
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+else
+  echo "Error: .env file not found"
+  exit 1
+fi
+
+# Deploy to Cloud Run
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions="\
+_FIREBASE_API_KEY=${EXPO_PUBLIC_FIREBASE_API_KEY},\
+_FIREBASE_AUTH_DOMAIN=${EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN},\
+_FIREBASE_PROJECT_ID=${EXPO_PUBLIC_FIREBASE_PROJECT_ID},\
+_FIREBASE_STORAGE_BUCKET=${EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET},\
+_FIREBASE_MESSAGING_SENDER_ID=${EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID},\
+_FIREBASE_APP_ID=${EXPO_PUBLIC_FIREBASE_APP_ID},\
+_FIREBASE_MEASUREMENT_ID=${EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID},\
+_GOOGLE_WEB_CLIENT_ID=${EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID}"

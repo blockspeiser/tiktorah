@@ -41,6 +41,7 @@ export function SplashScreen({ width, height }: SplashScreenProps) {
         resizeMode="contain"
       />
       <Text style={styles.title}>TikTorah</Text>
+      <Text style={styles.subtitle}>Powered by Sefaria</Text>
     </View>
   );
 }
@@ -63,5 +64,12 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginTop: 24,
     letterSpacing: 2,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 12,
+    color: colors.white,
+    opacity: 0.85,
+    letterSpacing: 0.5,
   },
 });

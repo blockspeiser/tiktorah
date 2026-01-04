@@ -19,6 +19,25 @@ export const DEFAULT_FEED_PREFERENCES: FeedPreferences = {
   comments: true,
 };
 
+let currentFeedPreferences: FeedPreferences = DEFAULT_FEED_PREFERENCES;
+const preferenceListeners = new Set<(prefs: FeedPreferences) => void>();
+
+export function getCurrentFeedPreferences() {
+  return currentFeedPreferences;
+}
+
+export function setCurrentFeedPreferences(prefs: FeedPreferences) {
+  currentFeedPreferences = prefs;
+  preferenceListeners.forEach((listener) => listener(prefs));
+}
+
+export function subscribeFeedPreferences(listener: (prefs: FeedPreferences) => void) {
+  preferenceListeners.add(listener);
+  return () => {
+    preferenceListeners.delete(listener);
+  };
+}
+
 const STORAGE_KEY = 'tiktorah.feedPreferences';
 
 export function normalizeFeedPreferences(value?: Partial<FeedPreferences> | null): FeedPreferences {

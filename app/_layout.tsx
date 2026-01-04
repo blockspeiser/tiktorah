@@ -76,6 +76,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.documentElement.style.setProperty('--sefaria-blue', colors['sefaria-blue']);
+      document.title = 'TikTorah | Endless bites of learning';
     }
   }, []);
 
