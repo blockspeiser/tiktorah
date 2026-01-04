@@ -6,6 +6,7 @@ interface CardLayoutProps {
   cardHeight?: number;
   gap?: number;
   minExtraHeight?: number;
+  forceExtra?: boolean;
   header?: ReactNode;
   description?: (maxHeight?: number) => ReactNode;
   extra?: (maxHeight?: number) => ReactNode;
@@ -24,6 +25,7 @@ export function CardLayout({
   cardHeight,
   gap = 8,
   minExtraHeight = 140,
+  forceExtra = false,
   header,
   description,
   extra,
@@ -49,11 +51,12 @@ export function CardLayout({
 
   const shouldShowExtra = useMemo(() => {
     if (!hasExtra) return false;
+    if (forceExtra) return true;
     if (!hasDescription) return true;
     if (descriptionNaturalHeight === 0) return true;
     const availableForDesc = baseHeight - gapsWithExtra - minExtraHeight;
     return descriptionNaturalHeight <= availableForDesc;
-  }, [baseHeight, descriptionNaturalHeight, gapsWithExtra, hasDescription, hasExtra, minExtraHeight]);
+  }, [baseHeight, descriptionNaturalHeight, forceExtra, gapsWithExtra, hasDescription, hasExtra, minExtraHeight]);
 
   const gaps = countGaps(hasHeader, hasDescription, shouldShowExtra, hasFooter) * gap;
   const available = Math.max(0, baseHeight - gaps);
