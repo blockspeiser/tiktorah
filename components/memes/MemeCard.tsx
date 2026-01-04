@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Image, Pressable, Modal } from 'react-native';
 import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { fetchCitationPreview, sanitizeText } from '@/services/sefariaText';
 
@@ -13,6 +14,9 @@ interface MemeCardProps {
   memeLink: string | null;
   onSave: (caption: string, memeLink: string, citation?: string, citationText?: string, citationCategory?: string | null) => Promise<void>;
   onDelete: () => Promise<void>;
+  showActions?: boolean;
+  imageMode?: 'cover' | 'contain';
+  autoHeight?: boolean;
 }
 
 function parseCitationInput(value: string) {
@@ -32,7 +36,20 @@ function parseCitationInput(value: string) {
   return { citation: trimmed, error: null };
 }
 
-export function MemeCard({ imageUrl, caption, citation, citationText, citationCategory, memeLink, onSave, onDelete }: MemeCardProps) {
+export function MemeCard({
+  imageUrl,
+  caption,
+  citation,
+  citationText,
+  citationCategory,
+  memeLink,
+  onSave,
+  onDelete,
+  showActions = true,
+  imageMode = 'cover',
+  autoHeight = false,
+}: MemeCardProps) {
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [nextCaption, setNextCaption] = useState(caption ?? '');
   const [nextLink, setNextLink] = useState(memeLink ?? '');
@@ -47,6 +64,7 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleEditOpen = () => {
+    if (!showActions) return;
     setNextCaption(caption ?? '');
     setNextLink(memeLink ?? '');
     setCitationInput(citation ?? '');
@@ -113,10 +131,69 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
     setConfirmDelete(false);
   };
 
+  useEffect(() => {
+    if (!autoHeight || !imageUrl) {
+      setAspectRatio(null);
+      return;
+    }
+    let active = true;
+    Image.getSize(
+      imageUrl,
+      (width, height) => {
+        if (!active) return;
+        if (width > 0 && height > 0) {
+          setAspectRatio(width / height);
+        }
+      },
+      () => {
+        if (active) setAspectRatio(1);
+      }
+    );
+    return () => {
+      active = false;
+    };
+  }, [autoHeight, imageUrl]);
+
+  const imageStyle = [
+    styles.imageBase,
+    !autoHeight && styles.imageFixed,
+    autoHeight ? { height: undefined, aspectRatio: aspectRatio ?? 1 } : null,
+  ];
+
   return (
     <View style={styles.card}>
+      <View style={styles.accentBar} />
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          <MaterialCommunityIcons name="image" size={32} color={colors.hotPink} />
+          <Text style={styles.headerLabel}>MEME</Text>
+        </View>
+        {showActions && (
+          <View style={styles.headerActions}>
+            {confirmDelete ? (
+              <>
+                <Pressable style={styles.cancelButton} onPress={() => setConfirmDelete(false)} disabled={deleting}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.confirmDeleteButton} onPress={handleDelete} disabled={deleting}>
+                  {deleting ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.confirmDeleteText}>Delete</Text>}
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable style={styles.editButton} onPress={handleEditOpen}>
+                  <Text style={styles.editText}>Edit</Text>
+                </Pressable>
+                <Pressable style={styles.outlineDeleteButton} onPress={() => setConfirmDelete(true)} disabled={deleting}>
+                  {deleting ? <ActivityIndicator color={colors.hotPink} size="small" /> : <Text style={styles.outlineDeleteText}>Delete</Text>}
+                </Pressable>
+              </>
+            )}
+          </View>
+        )}
+      </View>
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+        <Image source={{ uri: imageUrl }} style={imageStyle} resizeMode={imageMode} />
       ) : (
         <View style={styles.imagePlaceholder}>
           <ActivityIndicator />
@@ -124,28 +201,10 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
       )}
       <View style={styles.meta}>
         {caption ? <Text style={styles.caption}>{caption}</Text> : null}
-        {confirmDelete ? (
-          <View style={styles.actions}>
-            <Pressable style={styles.button} onPress={() => setConfirmDelete(false)} disabled={deleting}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </Pressable>
-            <Pressable style={styles.deleteButton} onPress={handleDelete} disabled={deleting}>
-              {deleting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>Confirm Delete</Text>}
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.actions}>
-            <Pressable style={styles.button} onPress={handleEditOpen}>
-              <Text style={styles.buttonText}>Edit</Text>
-            </Pressable>
-            <Pressable style={styles.deleteButton} onPress={() => setConfirmDelete(true)} disabled={deleting}>
-              {deleting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>Delete</Text>}
-            </Pressable>
-          </View>
-        )}
       </View>
 
-      <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
+      {showActions && (
+        <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Edit Meme</Text>
@@ -200,7 +259,8 @@ export function MemeCard({ imageUrl, caption, citation, citationText, citationCa
             </View>
           </View>
         </View>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -214,10 +274,88 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 16,
   },
-  image: {
+  accentBar: {
+    height: 24,
     width: '100%',
-    height: 220,
+    backgroundColor: colors.hotPink,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerLabel: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: colors.hotPink,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.hotPink,
+  },
+  editText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  outlineDeleteButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.hotPink,
+    backgroundColor: 'transparent',
+  },
+  outlineDeleteText: {
+    color: colors.hotPink,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.gray[400],
+    backgroundColor: 'transparent',
+  },
+  cancelText: {
+    color: colors.gray[600],
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  confirmDeleteButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#dc2626',
+  },
+  confirmDeleteText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  imageBase: {
+    width: '100%',
     backgroundColor: colors.gray[100],
+  },
+  imageFixed: {
+    height: 220,
   },
   imagePlaceholder: {
     width: '100%',

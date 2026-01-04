@@ -43,6 +43,17 @@ export interface MemeDoc {
   height?: number | null;
 }
 
+export interface CommentDoc {
+  ownerUid: string;
+  textBefore: string | null;
+  textAfter: string | null;
+  citation: string;
+  citationText: string;
+  citationCategory: string | null;
+  createdAt: unknown;
+  modifiedAt: unknown;
+}
+
 export async function getProfile(uid: string) {
   const ref = doc(db.current, 'profiles', uid);
   return getDoc(ref);
@@ -100,6 +111,48 @@ export function subscribeToMyMemes(
       const results = snapshot.docs.map(docSnap => ({
         id: docSnap.id,
         data: docSnap.data() as MemeDoc,
+      }));
+      callback(results);
+    },
+    onError
+  );
+}
+
+export async function createComment(commentId: string, data: Omit<CommentDoc, 'createdAt' | 'modifiedAt'>) {
+  const ref = doc(db.current, 'comments', commentId);
+  return setDoc(ref, {
+    ...data,
+    createdAt: serverTimestamp(),
+    modifiedAt: serverTimestamp(),
+  });
+}
+
+export async function updateComment(commentId: string, data: Partial<CommentDoc>) {
+  const ref = doc(db.current, 'comments', commentId);
+  return updateDoc(ref, {
+    ...data,
+    modifiedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteComment(commentId: string) {
+  const ref = doc(db.current, 'comments', commentId);
+  return deleteDoc(ref);
+}
+
+export function subscribeToMyComments(
+  uid: string,
+  callback: (docs: { id: string; data: CommentDoc }[]) => void,
+  onError?: (error: Error) => void
+) {
+  const commentsRef = collection(db.current, 'comments');
+  const q = query(commentsRef, where('ownerUid', '==', uid), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const results = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        data: docSnap.data() as CommentDoc,
       }));
       callback(results);
     },

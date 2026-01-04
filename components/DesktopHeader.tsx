@@ -33,9 +33,9 @@ export function DesktopHeader() {
           <Text style={styles.brandText}>TikTorah</Text>
         </Pressable>
         <View style={styles.headerRight}>
-          <Pressable style={styles.uploadButton} onPress={() => router.push('/upload')}>
-            <MaterialCommunityIcons name="plus" size={18} color={colors.white} />
-            <Text style={styles.uploadButtonText}>Upload</Text>
+          <Pressable style={styles.uploadButton} onPress={() => router.push('/post')}>
+            <MaterialCommunityIcons name="plus-thick" size={18} color={colors.white} />
+            <Text style={styles.uploadButtonText}>Post</Text>
           </Pressable>
           <Menu
             visible={menuVisible}
@@ -165,9 +165,9 @@ const styles = StyleSheet.create({
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: colors.hotPink,
     minHeight: 44,
@@ -175,6 +175,6 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     color: colors.white,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 16,
   },
 });

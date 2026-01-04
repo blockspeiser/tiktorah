@@ -13,10 +13,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSefaria } from '@/contexts/SefariaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyMemes } from '@/hooks/useMyMemes';
+import { useMyComments } from '@/hooks/useMyComments';
 import { useProfile } from '@/hooks/useProfile';
 import { useFeedPreferences } from '@/hooks/useFeedPreferences';
 import { buildCardPool } from '@/services/cardGenerator';
-import { FeedCard, MemeFeedCard } from '@/types/cards';
+import { FeedCard, MemeFeedCard, CommentFeedCard } from '@/types/cards';
 import { FeedCardRenderer } from '@/components/FeedCardRenderer';
 import { DataModal } from '@/components/DataModal';
 import { SplashScreen } from '@/components/SplashScreen';
@@ -41,6 +42,7 @@ export default function FeedScreen() {
   const { user } = useAuth();
   const { profile } = useProfile(user?.uid);
   const { memes, loading: memesLoading } = useMyMemes(user?.uid);
+  const { comments, loading: commentsLoading } = useMyComments(user?.uid);
   const { preferences } = useFeedPreferences();
   const mobileNavHeight = useMobileNavHeight();
 
@@ -50,8 +52,8 @@ export default function FeedScreen() {
   const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [memeCards, setMemeCards] = useState<MemeFeedCard[]>([]);
+  const [commentCards, setCommentCards] = useState<CommentFeedCard[]>([]);
   const [isBuildingQueue, setIsBuildingQueue] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const engineRef = useRef<FeedEngine | null>(null);
@@ -61,6 +63,7 @@ export default function FeedScreen() {
   const prefsKeyRef = useRef<string | null>(null);
   const isUserScrollingRef = useRef(false);
   const isProgrammaticScrollRef = useRef(false);
+  const lastUserScrollAtRef = useRef(0);
 
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && (screenWidth < 720 || screenHeight < 720);
@@ -70,8 +73,8 @@ export default function FeedScreen() {
     ? Math.max(520, screenHeight - DESKTOP_HEADER_HEIGHT - (DESKTOP_GAP * 2))
     : Math.max(320, screenHeight - mobileNavHeight);
   const phoneWidth = isWeb && !isCompactWeb ? phoneHeight * PHONE_ASPECT_RATIO : screenWidth;
-  const onlyMemes = preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
-  const noContentSelected = !preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics;
+  const onlyMemes = preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics && !preferences.comments;
+  const noContentSelected = !preferences.memes && !preferences.texts && !preferences.categories && !preferences.topics && !preferences.comments;
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -116,6 +119,7 @@ export default function FeedScreen() {
           caption: meme.data.caption ?? null,
           ownerDisplayName: profile?.displayName || user?.displayName || user?.email || null,
           ownerProfileLink: profile?.profileLink || null,
+          ownerPhotoURL: profile?.photoURL || user?.photoURL || null,
           citation: meme.data.citation ?? null,
           citationText: meme.data.citationText ?? null,
           citationCategory: meme.data.citationCategory ?? null,
@@ -131,6 +135,45 @@ export default function FeedScreen() {
       active = false;
     };
   }, [memes, preferences.memes, profile, user]);
+
+  useEffect(() => {
+    let active = true;
+    if (!preferences.comments) {
+      setCommentCards([]);
+      return () => {
+        active = false;
+      };
+    }
+    if (comments.length === 0) {
+      setCommentCards([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    const nextCards = comments.map((comment) => ({
+      id: `comment-${comment.id}`,
+      type: 'comment' as const,
+      title: 'Comment',
+      description: '',
+      textBefore: comment.data.textBefore ?? null,
+      textAfter: comment.data.textAfter ?? null,
+      citation: comment.data.citation,
+      citationText: comment.data.citationText,
+      citationCategory: comment.data.citationCategory ?? null,
+      ownerDisplayName: profile?.displayName || user?.displayName || user?.email || null,
+      ownerProfileLink: profile?.profileLink || null,
+      ownerPhotoURL: profile?.photoURL || user?.photoURL || null,
+    }));
+
+    if (active) {
+      setCommentCards(nextCards);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [comments, preferences.comments, profile, user]);
 
   const buildQueue = useCallback(async (
     targetSize: number,
@@ -160,9 +203,7 @@ export default function FeedScreen() {
         }
         return [...queue];
       });
-      if (queue.length > 0) {
-        setHasLoadedOnce(true);
-      }
+      // keep splash until cards are ready
       return queue;
     } finally {
       setIsBuildingQueue(false);
@@ -217,6 +258,7 @@ export default function FeedScreen() {
       const engine = new FeedEngine(preferences);
       engine.setPool(pool);
       engine.setMemes(memeCards);
+      engine.setComments(commentCards);
       engine.resetCaches();
       engine.clearQueue();
       engineRef.current = engine;
@@ -237,9 +279,10 @@ export default function FeedScreen() {
 
     engineRef.current.setPool(pool);
     engineRef.current.setMemes(memeCards);
+    engineRef.current.setComments(commentCards);
     setLoadError(null);
     buildQueue(QUEUE_SIZE, { reason: 'pool-update' });
-  }, [index, topics, preferences, memeCards, memesLoading, noContentSelected, onlyMemes, buildQueue]);
+  }, [index, topics, preferences, memeCards, commentCards, memesLoading, noContentSelected, onlyMemes, buildQueue]);
 
   const ensureAhead = useCallback(async (indexValue: number) => {
     const engine = engineRef.current;
@@ -257,13 +300,16 @@ export default function FeedScreen() {
   const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       const nextIndex = viewableItems[0].index;
-      const allowUpdate = isUserScrollingRef.current || isProgrammaticScrollRef.current;
+      const now = Date.now();
+      const recentUserScroll = now - lastUserScrollAtRef.current < 800;
+      const allowUpdate = isUserScrollingRef.current || isProgrammaticScrollRef.current || recentUserScroll;
       if (!allowUpdate && nextIndex !== currentIndexRef.current) {
         console.warn('[Feed] Ignoring viewable change without user scroll', {
           nextIndex,
           currentIndex: currentIndexRef.current,
           userScrolling: isUserScrollingRef.current,
           programmatic: isProgrammaticScrollRef.current,
+          recentUserScroll,
           cards: cardsRef.current.length,
         });
         return;
@@ -314,12 +360,14 @@ export default function FeedScreen() {
       splashMinTimeElapsed,
       cards: cards.length,
       memes: memeCards.length,
+      comments: commentCards.length,
+      commentsLoading,
       loadError,
       onlyMemes,
       isReady,
       isBuildingQueue,
     });
-  }, [isLoading, splashMinTimeElapsed, cards.length, memeCards.length, loadError, onlyMemes, isReady, isBuildingQueue]);
+  }, [isLoading, splashMinTimeElapsed, cards.length, memeCards.length, commentCards.length, commentsLoading, loadError, onlyMemes, isReady, isBuildingQueue]);
 
   if (showError) {
     const errorContent = (
@@ -351,26 +399,14 @@ export default function FeedScreen() {
           <DesktopHeader />
           <View style={styles.webContent}>
             <View style={[styles.phoneContainer, { width: phoneWidth, height: phoneHeight }]}> 
-              {hasLoadedOnce ? (
-                <View style={styles.centered}>
-                  <Text style={styles.loadingText}>Loading cards...</Text>
-                </View>
-              ) : (
-                <SplashScreen />
-              )}
+              <SplashScreen />
             </View>
           </View>
         </View>
       );
     }
 
-    return hasLoadedOnce ? (
-      <View style={styles.centered}>
-        <Text style={styles.loadingText}>Loading cards...</Text>
-      </View>
-    ) : (
-      <SplashScreen />
-    );
+    return <SplashScreen />;
   }
 
   const feedContent = (
@@ -386,16 +422,29 @@ export default function FeedScreen() {
       decelerationRate="fast"
       onScrollBeginDrag={() => {
         isUserScrollingRef.current = true;
+        lastUserScrollAtRef.current = Date.now();
       }}
+      onScroll={() => {
+        lastUserScrollAtRef.current = Date.now();
+      }}
+      scrollEventThrottle={16}
       onScrollEndDrag={() => {
         isUserScrollingRef.current = false;
       }}
       onMomentumScrollBegin={() => {
         isUserScrollingRef.current = true;
+        lastUserScrollAtRef.current = Date.now();
       }}
-      onMomentumScrollEnd={() => {
+      onMomentumScrollEnd={(event) => {
         isUserScrollingRef.current = false;
         isProgrammaticScrollRef.current = false;
+        lastUserScrollAtRef.current = Date.now();
+        const offsetY = event.nativeEvent.contentOffset.y;
+        const nextIndex = Math.round(offsetY / phoneHeight);
+        if (nextIndex !== currentIndexRef.current) {
+          setCurrentIndex(nextIndex);
+          ensureAheadRef.current(nextIndex);
+        }
       }}
       onViewableItemsChanged={onViewableItemsChangedRef.current}
       viewabilityConfig={viewabilityConfig}

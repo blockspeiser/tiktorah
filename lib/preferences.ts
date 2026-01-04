@@ -7,6 +7,7 @@ export type FeedPreferences = {
   commentaries: boolean;
   topics: boolean;
   memes: boolean;
+  comments: boolean;
 };
 
 export const DEFAULT_FEED_PREFERENCES: FeedPreferences = {
@@ -15,6 +16,7 @@ export const DEFAULT_FEED_PREFERENCES: FeedPreferences = {
   commentaries: true,
   topics: true,
   memes: true,
+  comments: true,
 };
 
 const STORAGE_KEY = 'tiktorah.feedPreferences';
@@ -26,6 +28,7 @@ export function normalizeFeedPreferences(value?: Partial<FeedPreferences> | null
     commentaries: value?.commentaries ?? DEFAULT_FEED_PREFERENCES.commentaries,
     topics: value?.topics ?? DEFAULT_FEED_PREFERENCES.topics,
     memes: value?.memes ?? DEFAULT_FEED_PREFERENCES.memes,
+    comments: value?.comments ?? DEFAULT_FEED_PREFERENCES.comments,
   };
 }
 

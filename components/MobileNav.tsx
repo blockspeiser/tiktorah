@@ -27,7 +27,7 @@ export function MobileNav() {
   const isMobileView = !isWeb || isCompactWeb;
 
   const activeTab = useMemo(() => {
-    if (pathname === '/upload') return 'upload';
+    if (pathname === '/post' || pathname === '/upload' || pathname === '/comment') return 'post';
     if (pathname.startsWith('/(tabs)/settings') || pathname === '/settings') return 'settings';
     return 'home';
   }, [pathname]);
@@ -40,14 +40,14 @@ export function MobileNav() {
         pointerEvents="none"
         style={[
           styles.activeIndicator,
-          activeTab === 'upload' && styles.activeIndicatorUpload,
+          activeTab === 'post' && styles.activeIndicatorPost,
           activeTab === 'home' && styles.activeIndicatorHome,
           activeTab === 'settings' && styles.activeIndicatorSettings,
         ]}
       />
       <Pressable
         style={styles.navButton}
-        onPress={() => router.push('/upload')}
+        onPress={() => router.push('/post')}
       >
         <MaterialCommunityIcons name="plus-thick" size={24} color={colors.hotPink} />
       </Pressable>
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: colors.hotPink,
   },
-  activeIndicatorUpload: {
+  activeIndicatorPost: {
     left: '0%',
   },
   activeIndicatorHome: {

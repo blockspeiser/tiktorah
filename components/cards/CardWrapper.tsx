@@ -16,9 +16,10 @@ interface CardWrapperProps {
   accentColor: string;
   iconColor?: string;
   onNextCard?: () => void;
+  actions?: ReactNode;
 }
 
-export function CardWrapper({ children, type, icon, accentColor, iconColor, onNextCard }: CardWrapperProps) {
+export function CardWrapper({ children, type, icon, accentColor, iconColor, onNextCard, actions }: CardWrapperProps) {
   const theme = useTheme();
 
   return (
@@ -28,14 +29,17 @@ export function CardWrapper({ children, type, icon, accentColor, iconColor, onNe
         <View style={styles.contentWrapper}>
           {/* Type label with icon */}
           <View style={styles.typeRow}>
-            <MaterialCommunityIcons
-              name={icon}
-              size={32}
-              color={iconColor ?? accentColor}
-            />
-            <Text style={[styles.typeLabel, { color: accentColor }]}>
-              {type.toUpperCase()}
-            </Text>
+            <View style={styles.typeLeft}>
+              <MaterialCommunityIcons
+                name={icon}
+                size={32}
+                color={iconColor ?? accentColor}
+              />
+              <Text style={[styles.typeLabel, { color: accentColor }]}>
+                {type.toUpperCase()}
+              </Text>
+            </View>
+            {actions && <View style={styles.typeActions}>{actions}</View>}
           </View>
 
           {/* Card content */}
@@ -80,8 +84,18 @@ const styles = StyleSheet.create({
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     marginBottom: 6,
+  },
+  typeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  typeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   typeLabel: {
     fontSize: 22,

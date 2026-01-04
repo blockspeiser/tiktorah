@@ -7,6 +7,7 @@ import {
   AuthorCardView,
   TopicCardView,
   MemeCardView,
+  CommentCardView,
 } from './cards';
 
 interface FeedCardRendererProps {
@@ -29,6 +30,8 @@ export function FeedCardRenderer({ card, onNextCard, cardHeight }: FeedCardRende
       return <TopicCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     case 'meme':
       return <MemeCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
+    case 'comment':
+      return <CommentCardView card={card} onNextCard={onNextCard} cardHeight={cardHeight} />;
     default:
       return null;
   }

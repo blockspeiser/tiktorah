@@ -58,9 +58,6 @@ export function AuthorCardView({ card, onNextCard, cardHeight }: AuthorCardViewP
   // Build metadata line
   const metaParts: string[] = [];
   if (generation) metaParts.push(generation);
-  if (card.numSources && card.numSources > 0) {
-    metaParts.push(`${card.numSources.toLocaleString()} sources on Sefaria`);
-  }
   const metaLine = metaParts.join(' · ');
   const sefariaUrl = buildSefariaTopicUrl(card.slug);
   const links = [

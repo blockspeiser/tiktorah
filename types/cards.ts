@@ -1,6 +1,6 @@
 import { SefariaCategory, SefariaTopic } from '@/services/sefariaData';
 
-export type CardType = 'genre' | 'text' | 'author' | 'topic' | 'meme' | 'commentary';
+export type CardType = 'genre' | 'text' | 'author' | 'topic' | 'meme' | 'commentary' | 'comment';
 
 export interface BaseCard {
   id: string;
@@ -78,13 +78,26 @@ export interface MemeFeedCard extends BaseCard {
   caption?: string | null;
   ownerDisplayName?: string | null;
   ownerProfileLink?: string | null;
+  ownerPhotoURL?: string | null;
   citation?: string | null;
   citationText?: string | null;
   citationCategory?: string | null;
   memeLink?: string | null;
 }
 
-export type FeedCard = GenreCard | TextCard | CommentaryCard | AuthorCard | TopicCard | MemeFeedCard;
+export interface CommentFeedCard extends BaseCard {
+  type: 'comment';
+  textBefore?: string | null;
+  textAfter?: string | null;
+  citation: string;
+  citationText: string;
+  citationCategory?: string | null;
+  ownerDisplayName?: string | null;
+  ownerProfileLink?: string | null;
+  ownerPhotoURL?: string | null;
+}
+
+export type FeedCard = GenreCard | TextCard | CommentaryCard | AuthorCard | TopicCard | MemeFeedCard | CommentFeedCard;
 
 // Helper to get primary English title from topic titles array
 export function getPrimaryEnglishTitle(titles: SefariaTopic['titles']): string {

@@ -4,6 +4,7 @@ import { ActivityIndicator, Button, Text, TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { createMeme, updateMeme, deleteMemeDoc } from '@/lib/firestore';
 import { deleteMemeStorage, getMemeDownloadUrl, uploadUserMeme } from '@/lib/storage';
@@ -66,6 +67,7 @@ function normalizeUrl(value: string) {
 }
 
 export default function UploadScreen() {
+  const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const isCompactWeb = isWeb && screenWidth < 720;
@@ -228,14 +230,9 @@ export default function UploadScreen() {
       return;
     }
 
-    setUploadedMemeId(memeId);
-    setPickedImage(null);
-    setCaption('');
-    setMemeLink('');
-    setCitationInput('');
-    setCitationPreview(null);
     setUploading(false);
-  }, [user, pickedImage, caption, memeLink, citationPreview]);
+    router.replace(`/meme/${memeId}`);
+  }, [user, pickedImage, caption, memeLink, citationPreview, router]);
 
   const handleUpdateMeme = useCallback(async (
     memeId: string,
@@ -380,40 +377,6 @@ export default function UploadScreen() {
         )}
         </View>
 
-        {showUpload && (
-          <>
-          <Text style={[styles.pageTitle, styles.maxWidth]}>My Memes</Text>
-          <View style={[styles.card, styles.maxWidth, isMobileView && styles.cardMobile]}>
-            {memesError && <Text style={styles.error}>{memesError}</Text>}
-            {memesLoading && (
-              <View style={styles.center}>
-                <ActivityIndicator />
-              </View>
-            )}
-            {!memesLoading && memes.length === 0 && (
-              <Text style={styles.body}>No memes yet. Upload your first one above.</Text>
-            )}
-            <View style={[styles.memeGrid, isWide && styles.memeGridWide]}>
-              {memes.map((meme) => (
-                <View key={meme.id} style={[styles.memeCell, isWide && styles.memeCellWide]}>
-                  <MemeCard
-                  imageUrl={downloadUrls[meme.id] ?? ''}
-                  caption={meme.data.caption}
-                  citation={meme.data.citation}
-                  citationText={meme.data.citationText ?? null}
-                  citationCategory={meme.data.citationCategory ?? null}
-                  memeLink={meme.data.memeLink}
-                  onSave={(nextCaption, nextLink, nextCitation, nextCitationText, nextCitationCategory) =>
-                    handleUpdateMeme(meme.id, nextCaption, nextLink, nextCitation, nextCitationText, nextCitationCategory)
-                  }
-                  onDelete={() => handleDeleteMeme(meme.id, meme.data.storagePath)}
-                />
-                </View>
-              ))}
-            </View>
-          </View>
-          </>
-        )}
       </View>
       </ScrollView>
       <MobileNav />
